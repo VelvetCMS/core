@@ -1,0 +1,40 @@
+{
+  "name": "velvetcms/core",
+  "description": "Modular content application PHP framework with pluggable content drivers, events, templates and much more. Foundation for the VelvetCMS platform.",
+  "type": "project",
+  "license": "Apache-2.0",
+  "require": {
+    "php": "^8.4",
+    "symfony/console": "^8.0",
+    "symfony/yaml": "^8.0",
+    "composer/semver": "^3.4",
+    "psr/log": "^3.0"
+  },
+  "require-dev": {
+    "phpunit/phpunit": "^12.0",
+    "league/commonmark": "^2.8"
+  },
+  "suggest": {
+    "league/commonmark": "Required for the 'commonmark' content parser driver",
+    "erusev/parsedown": "Required for the 'parsedown' content parser driver"
+  },
+  "autoload": {
+    "psr-4": {
+      "VelvetCMS\\": "src/"
+    },
+    "files": [
+      "src/Support/helpers.php"
+    ]
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "VelvetCMS\\Tests\\": "tests/"
+    }
+  },
+  "scripts": {
+    "test": "phpunit"
+  },
+  "bin": [
+    "velvet"
+  ]
+}
