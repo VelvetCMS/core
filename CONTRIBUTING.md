@@ -6,8 +6,8 @@ Thanks for your interest in contributing to VelvetCMS.
 
 1. **Clone and install**
    ```bash
-   git clone https://github.com/VelvetCMS/VelvetCMS-Core.git
-   cd VelvetCMS-Core
+   git clone https://github.com/VelvetCMS/core.git
+   cd core
    composer install
    ```
 

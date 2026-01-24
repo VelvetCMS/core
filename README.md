@@ -101,7 +101,7 @@ We reject the "magic" that plagues modern PHP. We believe you should be able to 
 - **Version Registry**: Centralized version management for core and modules.
 
 ### Multi-Tenancy
-- **Single switch**: Enable/disable in [user/config/tenancy.php](VelvetCMS-Core/user/config/tenancy.php) with `tenancy.enabled` (default off).
+- **Single switch**: Enable/disable in [user/config/tenancy.php](user/config/tenancy.php) with `tenancy.enabled` (default off).
 - **Resolvers**:
   - **Host**: Map hostnames or subdomains to tenants (`tenancy.host.map`, optional wildcard subdomains).
   - **Path**: Use a path segment as tenant id (`tenancy.path.segment`).
@@ -130,8 +130,8 @@ We reject the "magic" that plagues modern PHP. We believe you should be able to 
 
 ```bash
 # Clone and install
-git clone https://github.com/VelvetCMS/VelvetCMS-Core.git
-cd VelvetCMS-Core
+git clone https://github.com/VelvetCMS/core.git
+cd core
 composer install
 
 # Bootstrap
