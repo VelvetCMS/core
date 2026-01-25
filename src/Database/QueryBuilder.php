@@ -59,12 +59,8 @@ class QueryBuilder
         return $this;
     }
     
-    public function where(string|RawExpression $column, string $operator, mixed $value = null): self
+    public function where(string|RawExpression $column, string $operator, mixed $value): self
     {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
-        }
         
         $columnSql = $column instanceof RawExpression ? $column->getValue() : $column;
         
@@ -97,12 +93,8 @@ class QueryBuilder
         return $this;
     }
     
-    public function orWhere(string $column, string $operator, mixed $value = null): self
+    public function orWhere(string $column, string $operator, mixed $value): self
     {
-        if ($value === null) {
-            $value = $operator;
-            $operator = '=';
-        }
         
         $this->wheres[] = [
             'type' => 'basic',
@@ -313,7 +305,7 @@ class QueryBuilder
     
     public function find(int|string $id): ?array
     {
-        return $this->where('id', $id)->first();
+        return $this->where('id', '=', $id)->first();
     }
     
     public function count(): int

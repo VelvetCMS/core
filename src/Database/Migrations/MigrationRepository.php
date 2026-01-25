@@ -40,7 +40,7 @@ class MigrationRepository
     public function delete(string $file): void
     {
         $this->connection->table($this->table)
-            ->where('migration', $file)
+            ->where('migration', '=', $file)
             ->delete();
     }
 
