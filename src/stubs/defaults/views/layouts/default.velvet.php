@@ -12,7 +12,7 @@
     </main>
 
     <footer>
-        <p>&copy; {{ date('Y') }} {{ $site['name'] }}. Powered by VelvetCMS.</p>
+        <p>&copy; {{ date('Y') }} {{ config('app.name', 'VelvetCMS') }}. Powered by VelvetCMS.</p>
     </footer>
 </body>
 </html>
