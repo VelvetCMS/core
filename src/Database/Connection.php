@@ -155,6 +155,14 @@ class Connection
     }
 
     /**
+     * Get the database driver name (sqlite, mysql, pgsql)
+     */
+    public function getDriver(): string
+    {
+        return $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
+    }
+
+    /**
      * Get last insert ID
      */
     public function lastInsertId(): string

@@ -183,6 +183,15 @@ class QueryBuilder
     
     public function rightJoin(string $table, string $first, string $operator, string $second): self
     {
+        // SQLite does not support RIGHT JOIN - convert to LEFT JOIN with swapped tables
+        if ($this->connection->getDriver() === 'sqlite') {
+            // Swap: "A RIGHT JOIN B ON A.x = B.y" becomes "B LEFT JOIN A ON B.y = A.x"
+            $originalTable = $this->table;
+            $this->table = $table;
+            
+            return $this->leftJoin($originalTable, $second, $operator, $first);
+        }
+        
         $this->joins[] = [
             'type' => 'RIGHT',
             'table' => $table,
@@ -345,7 +354,99 @@ class QueryBuilder
         $this->connection->statement($sql, array_values($data));
         return true;
     }
+
+    /**
+     * Insert or update a record.
+     * 
+     * @param array $data Column => value pairs to insert/update
+     * @param string|array $uniqueBy Column(s) that determine uniqueness (for conflict detection)
+     * @param array|null $update Columns to update on conflict. If null, updates all columns from $data.
+     */
+    public function upsert(array $data, string|array $uniqueBy, ?array $update = null): bool
+    {
+        $uniqueBy = (array) $uniqueBy;
+        $columns = array_keys($data);
+        $placeholders = array_fill(0, count($columns), '?');
+        $bindings = array_values($data);
+        
+        // Determine which columns to update on conflict
+        $updateColumns = $update ?? array_diff($columns, $uniqueBy);
+        
+        $driver = $this->connection->getDriver();
+        
+        $sql = match ($driver) {
+            'sqlite' => $this->buildSqliteUpsert($columns, $placeholders, $uniqueBy, $updateColumns),
+            'mysql' => $this->buildMysqlUpsert($columns, $placeholders, $updateColumns),
+            'pgsql' => $this->buildPostgresUpsert($columns, $placeholders, $uniqueBy, $updateColumns),
+            default => throw new \RuntimeException("Upsert not supported for driver: {$driver}")
+        };
+        
+        // MySQL ON DUPLICATE KEY UPDATE needs values twice (for INSERT and UPDATE)
+        if ($driver === 'mysql' && !empty($updateColumns)) {
+            foreach ($updateColumns as $col) {
+                $bindings[] = $data[$col];
+            }
+        }
+        
+        $this->connection->statement($sql, $bindings);
+        return true;
+    }
     
+    private function buildSqliteUpsert(array $columns, array $placeholders, array $uniqueBy, array $updateColumns): string
+    {
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s)',
+            $this->table,
+            implode(', ', $columns),
+            implode(', ', $placeholders),
+            implode(', ', $uniqueBy)
+        );
+        
+        if (empty($updateColumns)) {
+            return $sql . ' DO NOTHING';
+        }
+        
+        $updates = array_map(fn($col) => "{$col} = excluded.{$col}", $updateColumns);
+        return $sql . ' DO UPDATE SET ' . implode(', ', $updates);
+    }
+    
+    private function buildMysqlUpsert(array $columns, array $placeholders, array $updateColumns): string
+    {
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s)',
+            $this->table,
+            implode(', ', $columns),
+            implode(', ', $placeholders)
+        );
+        
+        if (empty($updateColumns)) {
+            // MySQL doesn't have "DO NOTHING", use a no-op update
+            $firstCol = $columns[0];
+            return $sql . " ON DUPLICATE KEY UPDATE {$firstCol} = {$firstCol}";
+        }
+        
+        $updates = array_map(fn($col) => "{$col} = ?", $updateColumns);
+        return $sql . ' ON DUPLICATE KEY UPDATE ' . implode(', ', $updates);
+    }
+    
+    private function buildPostgresUpsert(array $columns, array $placeholders, array $uniqueBy, array $updateColumns): string
+    {
+        $sql = sprintf(
+            'INSERT INTO %s (%s) VALUES (%s) ON CONFLICT (%s)',
+            $this->table,
+            implode(', ', $columns),
+            implode(', ', $placeholders),
+            implode(', ', $uniqueBy)
+        );
+        
+        if (empty($updateColumns)) {
+            return $sql . ' DO NOTHING';
+        }
+        
+        $updates = array_map(fn($col) => "{$col} = EXCLUDED.{$col}", $updateColumns);
+        return $sql . ' DO UPDATE SET ' . implode(', ', $updates);
+    }
+
     public function update(array $data): int
     {
         $sets = [];
