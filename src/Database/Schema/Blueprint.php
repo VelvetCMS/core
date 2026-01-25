@@ -111,18 +111,36 @@ class Blueprint
         return $this;
     }
 
-    public function index(string|array $columns, ?string $name = null): self
+    public function index(string|array|null $columns = null, ?string $name = null): self
     {
+        if ($columns === null) {
+            $lastColumn = $this->columns[array_key_last($this->columns)]['name'];
+            $columns = [$lastColumn];
+        } else {
+            $columns = (array) $columns;
+        }
         return $this->addCommand('index', compact('columns', 'name'));
     }
 
-    public function unique(string|array $columns, ?string $name = null): self
+    public function unique(string|array|null $columns = null, ?string $name = null): self
     {
+        if ($columns === null) {
+            $lastColumn = $this->columns[array_key_last($this->columns)]['name'];
+            $columns = [$lastColumn];
+        } else {
+            $columns = (array) $columns;
+        }
         return $this->addCommand('unique', compact('columns', 'name'));
     }
 
-    public function primary(string|array $columns, ?string $name = null): self
+    public function primary(string|array|null $columns = null, ?string $name = null): self
     {
+        if ($columns === null) {
+            $lastColumn = $this->columns[array_key_last($this->columns)]['name'];
+            $columns = [$lastColumn];
+        } else {
+            $columns = (array) $columns;
+        }
         return $this->addCommand('primary', compact('columns', 'name'));
     }
 
