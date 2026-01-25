@@ -36,7 +36,7 @@ class ListCommand extends Command
         $coreVersion = $registry->getVersion('core');
 
         $this->line();
-        $this->line("\033[1mVelvetCMS\033[0m \033[33m{$coreVersion}\033[0m");
+        $this->line("\033[1mVelvetCMS Core\033[0m \033[33m{$coreVersion}\033[0m");
 
         $moduleEntries = $registry->getModules();
         if (!empty($moduleEntries)) {

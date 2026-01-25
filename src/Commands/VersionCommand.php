@@ -18,7 +18,7 @@ class VersionCommand extends Command
     
     public function description(): string
     {
-        return 'Display VelvetCMS version';
+        return 'Display VelvetCMS Core version';
     }
     
     public function handle(): int
@@ -27,7 +27,7 @@ class VersionCommand extends Command
         $coreVersion = $registry->getVersion('core');
         $stability = $registry->getStability('core');
         
-        $this->line("\033[1mVelvetCMS\033[0m \033[33m{$coreVersion}\033[0m");
+        $this->line("\033[1mVelvetCMS Core\033[0m \033[33m{$coreVersion}\033[0m");
         $this->line();
 
         $releaseDate = $registry->getReleaseDate('core');

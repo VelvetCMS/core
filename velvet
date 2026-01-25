@@ -143,7 +143,7 @@ if (!$commandName) {
     $versionRegistry = \VelvetCMS\Core\VersionRegistry::instance();
     $coreVersion = $versionRegistry->getVersion('core');
 
-    echo "\033[1mVelvetCMS\033[0m \033[33m{$coreVersion}\033[0m\n";
+    echo "\033[1mVelvetCMS Core\033[0m \033[33m{$coreVersion}\033[0m\n";
 
     $modules = $versionRegistry->getModules();
     if (!empty($modules)) {
