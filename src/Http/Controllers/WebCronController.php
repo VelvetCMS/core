@@ -12,7 +12,8 @@ class WebCronController
     public function __construct(
         private readonly Application $app,
         private readonly Schedule $schedule
-    ) {}
+    ) {
+    }
 
     public function run(): void
     {

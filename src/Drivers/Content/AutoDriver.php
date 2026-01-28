@@ -5,9 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Drivers\Content;
 
 use VelvetCMS\Contracts\ContentDriver;
-use VelvetCMS\Models\Page;
 use VelvetCMS\Database\Collection;
-use VelvetCMS\Database\Connection;
+use VelvetCMS\Models\Page;
 
 class AutoDriver implements ContentDriver
 {
@@ -15,17 +14,16 @@ class AutoDriver implements ContentDriver
     private int $threshold;
     private ?int $lastKnownCount = null;
     private bool $forceNextEvaluation = false;
-    
+
     public function __construct(
         private readonly FileDriver $fileDriver,
         private readonly HybridDriver $hybridDriver,
-        private readonly Connection $connection,
         ?int $threshold = null
     ) {
         $this->threshold = $threshold ?? config('content.drivers.auto.threshold', 100);
         $this->determineActiveDriver();
     }
-    
+
     private function determineActiveDriver(bool $force = false): void
     {
         if ($this->lastKnownCount !== null && !$force && !$this->forceNextEvaluation) {
@@ -35,7 +33,7 @@ class AutoDriver implements ContentDriver
             $this->lastKnownCount = $pageCount;
             $this->forceNextEvaluation = false;
         }
-        
+
         if ($pageCount >= $this->threshold) {
             // Switch to hybrid for better performance with many pages
             $this->activeDriver = $this->hybridDriver;
@@ -51,12 +49,12 @@ class AutoDriver implements ContentDriver
         // since FileDriver is the starting point and Hybrid also manages files
         return $this->fileDriver->count();
     }
-    
+
     public function getActiveDriver(): ContentDriver
     {
         return $this->activeDriver;
     }
-    
+
     public function getActiveDriverName(): string
     {
         return match (true) {
@@ -65,12 +63,12 @@ class AutoDriver implements ContentDriver
             default => 'unknown',
         };
     }
-    
+
     public function load(string $slug): Page
     {
         return $this->activeDriver->load($slug);
     }
-    
+
     public function save(Page $page): bool
     {
         $result = $this->activeDriver->save($page);
@@ -80,7 +78,7 @@ class AutoDriver implements ContentDriver
 
         return $result;
     }
-    
+
     public function list(array $filters = []): Collection
     {
         $collection = $this->activeDriver->list($filters);
@@ -92,7 +90,7 @@ class AutoDriver implements ContentDriver
 
         return $collection;
     }
-    
+
     public function delete(string $slug): bool
     {
         $result = $this->activeDriver->delete($slug);
@@ -102,7 +100,7 @@ class AutoDriver implements ContentDriver
 
         return $result;
     }
-    
+
     public function exists(string $slug): bool
     {
         return $this->activeDriver->exists($slug);
@@ -112,7 +110,7 @@ class AutoDriver implements ContentDriver
     {
         return $this->activeDriver->paginate($page, $perPage, $filters);
     }
-    
+
     /**
      * Count pages
      */

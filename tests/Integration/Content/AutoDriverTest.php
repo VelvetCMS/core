@@ -5,13 +5,13 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Integration\Content;
 
 use PDO;
+use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\AutoDriver;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Drivers\Content\HybridDriver;
 use VelvetCMS\Models\Page;
 use VelvetCMS\Services\ContentParser;
-use VelvetCMS\Database\Connection;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class AutoDriverTest extends TestCase
@@ -82,10 +82,10 @@ final class AutoDriverTest extends TestCase
             );
             $driver->save($page);
         }
-        
+
         // Should be using FileDriver
         $this->assertSame('file', $driver->getActiveDriverName());
-        
+
         // Verify files exist
         $contentPath = $this->tmpDir . '/content/pages';
         $this->assertFileExists($contentPath . '/page-1.md');
@@ -105,9 +105,9 @@ final class AutoDriverTest extends TestCase
             status: 'published'
         );
         $driver->save($page);
-        
+
         $this->assertSame('file', $driver->getActiveDriverName());
-        
+
         // Load should work
         $loaded = $driver->load('test-page');
         $this->assertSame('Test Page', $loaded->title);
@@ -128,9 +128,9 @@ final class AutoDriverTest extends TestCase
             );
             $driver->save($page);
         }
-        
+
         $pages = $driver->list(['status' => 'published']);
-        
+
         $this->assertCount(3, $pages);
     }
 
@@ -145,11 +145,11 @@ final class AutoDriverTest extends TestCase
             status: 'draft'
         );
         $driver->save($page);
-        
+
         $this->assertTrue($driver->exists('delete-me'));
-        
+
         $driver->delete('delete-me');
-        
+
         $this->assertFalse($driver->exists('delete-me'));
     }
 
@@ -158,7 +158,7 @@ final class AutoDriverTest extends TestCase
         $driver = $this->makeAutoDriver(5);
 
         $this->assertSame(0, $driver->count());
-        
+
         for ($i = 1; $i <= 3; $i++) {
             $page = new Page(
                 slug: "count-page-{$i}",
@@ -168,7 +168,7 @@ final class AutoDriverTest extends TestCase
             );
             $driver->save($page);
         }
-        
+
         $this->assertSame(3, $driver->count());
     }
 }

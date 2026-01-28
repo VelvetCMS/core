@@ -98,7 +98,7 @@ class Handler implements ExceptionHandlerInterface
     {
         $message = htmlspecialchars($payload['message'], ENT_QUOTES, 'UTF-8');
         $exception = htmlspecialchars($payload['exception'], ENT_QUOTES, 'UTF-8');
-        $trace = implode('<br>', array_map(static fn(string $line): string => htmlspecialchars($line, ENT_QUOTES, 'UTF-8'), $payload['trace']));
+        $trace = implode('<br>', array_map(static fn (string $line): string => htmlspecialchars($line, ENT_QUOTES, 'UTF-8'), $payload['trace']));
 
         return <<<HTML
 <!DOCTYPE html>

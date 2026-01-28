@@ -25,7 +25,7 @@ final class PipelineTest extends TestCase
                     return $next($request);
                 },
             ])
-            ->then(fn($request) => Response::html('done'));
+            ->then(fn ($request) => Response::html('done'));
 
         $this->assertTrue($executed);
         $this->assertSame('done', $result->getContent());
@@ -99,7 +99,7 @@ final class PipelineTest extends TestCase
         $result = $pipeline
             ->send($this->makeRequest('GET', '/'))
             ->through([])
-            ->then(fn($request) => Response::html('direct'));
+            ->then(fn ($request) => Response::html('direct'));
 
         $this->assertSame('direct', $result->getContent());
     }
@@ -116,7 +116,7 @@ final class PipelineTest extends TestCase
                     return $response->header('X-Modified', 'yes');
                 },
             ])
-            ->then(fn($request) => Response::html('content'));
+            ->then(fn ($request) => Response::html('content'));
 
         $this->assertSame('yes', $result->getHeader('X-Modified'));
     }
@@ -149,7 +149,7 @@ final class PipelineTest extends TestCase
         $result = $pipeline
             ->send($this->makeRequest('GET', '/'))
             ->through([TestMiddleware::class])
-            ->then(fn($request) => Response::html('handler'));
+            ->then(fn ($request) => Response::html('handler'));
 
         $this->assertArrayHasKey('X-Test-Header', $result->getHeaders());
         $this->assertSame('middleware-added', $result->getHeader('X-Test-Header'));

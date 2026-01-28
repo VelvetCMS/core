@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Database;
 
-use PDO;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\Migrations\MigrationRepository;
 use VelvetCMS\Database\Migrations\Migrator;
@@ -21,7 +20,7 @@ final class MigratorTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $dbPath = $this->tmpDir . '/test.sqlite';
         $this->migrationsPath = $this->tmpDir . '/migrations';
         mkdir($this->migrationsPath, 0755, true);
@@ -44,7 +43,7 @@ final class MigratorTest extends TestCase
 
     public function test_runs_simple_sql_migration(): void
     {
-        $sql = "CREATE TABLE test_simple (id INTEGER PRIMARY KEY, name TEXT);";
+        $sql = 'CREATE TABLE test_simple (id INTEGER PRIMARY KEY, name TEXT);';
         file_put_contents($this->migrationsPath . '/001_simple.sql', $sql);
 
         $this->expectOutputRegex('/Migrating: 001_simple.*Migrated:  001_simple/s');
@@ -52,7 +51,7 @@ final class MigratorTest extends TestCase
 
         $this->assertTrue($this->repository->repositoryExists());
         $this->assertContains('001_simple', $this->repository->getRan());
-        
+
         // Verify table exists
         $result = $this->connection->query("SELECT name FROM sqlite_master WHERE type='table' AND name='test_simple'");
         $this->assertCount(1, $result);
@@ -75,7 +74,7 @@ final class MigratorTest extends TestCase
 
         $this->assertContains('002_complex', $this->repository->getRan());
 
-        $rows = $this->connection->query("SELECT * FROM test_complex ORDER BY id");
+        $rows = $this->connection->query('SELECT * FROM test_complex ORDER BY id');
         $this->assertCount(3, $rows);
         $this->assertSame('Hello; World', $rows[0]['content']);
         $this->assertSame('Another; Test', $rows[1]['content']);
@@ -106,23 +105,23 @@ PHP;
         $this->migrator->run($this->migrationsPath);
 
         $this->assertContains('003_php', $this->repository->getRan());
-        
+
         $result = $this->connection->query("SELECT name FROM sqlite_master WHERE type='table' AND name='test_php'");
         $this->assertCount(1, $result);
     }
 
     public function test_skips_already_ran_migrations(): void
     {
-        file_put_contents($this->migrationsPath . '/001_repeat.sql', "CREATE TABLE test_repeat (id INTEGER);");
-        
+        file_put_contents($this->migrationsPath . '/001_repeat.sql', 'CREATE TABLE test_repeat (id INTEGER);');
+
         $this->expectOutputRegex('/Migrating: 001_repeat.*Migrated:  001_repeat/s');
-        
+
         // First run
         $this->migrator->run($this->migrationsPath);
-        
+
         // Second run - should not fail due to "table already exists"
         $this->migrator->run($this->migrationsPath);
-        
+
         $this->assertTrue(true); // If we got here, it didn't crash
     }
 }

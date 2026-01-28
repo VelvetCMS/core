@@ -24,9 +24,9 @@ class Schedule
 
     public function getDueTasks(): array
     {
-        return array_filter($this->tasks, fn(Task $task) => $task->isDue());
+        return array_filter($this->tasks, fn (Task $task) => $task->isDue());
     }
-    
+
     public function getAllTasks(): array
     {
         return $this->tasks;

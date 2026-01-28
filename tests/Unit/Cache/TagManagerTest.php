@@ -30,10 +30,10 @@ final class TagManagerTest extends TestCase
 
     public function test_remember_indexes_keys_and_retrieves_value(): void
     {
-        $value = $this->tags->remember('example', 'cache:key', 60, fn() => 'payload');
+        $value = $this->tags->remember('example', 'cache:key', 60, fn () => 'payload');
         $this->assertSame('payload', $value);
 
-        $cached = $this->tags->remember('example', 'cache:key', 60, fn() => 'other');
+        $cached = $this->tags->remember('example', 'cache:key', 60, fn () => 'other');
         $this->assertSame('payload', $cached);
     }
 

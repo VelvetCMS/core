@@ -21,7 +21,7 @@ final class CommonMarkTemplateExtensionTest extends TestCase
     {
         $input = 'Hello {{ $name }}!';
         $expected = '<p>Hello {{ $name }}!</p>' . "\n";
-        
+
         $this->assertSame($expected, $this->parser->parse($input));
     }
 
@@ -29,7 +29,7 @@ final class CommonMarkTemplateExtensionTest extends TestCase
     {
         $input = 'Hello {!! $name !!}!';
         $expected = '<p>Hello {!! $name !!}!</p>' . "\n";
-        
+
         $this->assertSame($expected, $this->parser->parse($input));
     }
 
@@ -37,16 +37,16 @@ final class CommonMarkTemplateExtensionTest extends TestCase
     {
         $input = 'Header' . "\n\n" . 'Value: {{ $value }}' . "\n\n" . 'Footer';
         $result = $this->parser->parse($input);
-        
+
         $this->assertStringContainsString('{{ $value }}', $result);
         $this->assertStringContainsString('<p>Value: {{ $value }}</p>', $result);
     }
-    
+
     public function test_blade_tags_do_not_break_markdown_parsing(): void
     {
         $input = '**Bold** {{ $variable }}';
         $result = $this->parser->parse($input);
-        
+
         $this->assertStringContainsString('<strong>Bold</strong>', $result);
         $this->assertStringContainsString('{{ $variable }}', $result);
     }

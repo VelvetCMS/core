@@ -13,7 +13,8 @@ final class RawExpression
     public function __construct(
         private readonly string $expression,
         private readonly array $bindings = []
-    ) {}
+    ) {
+    }
 
     public function getValue(): string
     {

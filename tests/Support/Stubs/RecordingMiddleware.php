@@ -17,7 +17,7 @@ class RecordingMiddleware implements MiddlewareInterface
         self::$calls[] = 'before';
         $response = $next($request);
         self::$calls[] = 'after';
-        
+
         return $response;
     }
 }

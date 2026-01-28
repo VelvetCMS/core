@@ -5,10 +5,9 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Integration\Security;
 
 use VelvetCMS\Core\EventDispatcher;
-use VelvetCMS\Http\Routing\Router;
 use VelvetCMS\Http\Middleware\VerifyCsrfToken;
-use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
+use VelvetCMS\Http\Routing\Router;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class CsrfMiddlewareTest extends TestCase
@@ -18,7 +17,7 @@ final class CsrfMiddlewareTest extends TestCase
         $router = new Router(new EventDispatcher());
         $router->registerMiddleware('csrf', VerifyCsrfToken::class);
         $router->pushMiddleware('csrf');
-        $router->post('/submit', fn() => Response::html('ok'));
+        $router->post('/submit', fn () => Response::html('ok'));
 
         $request = $this->makeRequest('POST', '/submit');
         $response = $router->dispatch($request);
@@ -31,7 +30,7 @@ final class CsrfMiddlewareTest extends TestCase
         $router = new Router(new EventDispatcher());
         $router->registerMiddleware('csrf', VerifyCsrfToken::class);
         $router->pushMiddleware('csrf');
-        $router->post('/submit', fn() => Response::html('ok'));
+        $router->post('/submit', fn () => Response::html('ok'));
 
         $token = csrf_token();
         $request = $this->makeRequest('POST', '/submit', ['_token' => $token]);

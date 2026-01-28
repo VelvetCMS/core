@@ -34,7 +34,7 @@ final class PageServiceTest extends TestCase
             'prefix' => 'test_'
         ]);
         $tagManager = new CacheTagManager($cache);
-        
+
         $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
         $parser = new ContentParser($cache, $commonMark);
         $driver = new FileDriver($parser, $this->contentPath);
@@ -46,21 +46,21 @@ final class PageServiceTest extends TestCase
     {
         $page = new Page('event-test', 'Event Test', 'Content');
         $this->service->save($page);
-        
+
         $eventsDispatched = [];
-        
-        $this->events->listen('page.loading', function($slug) use (&$eventsDispatched) {
+
+        $this->events->listen('page.loading', function ($slug) use (&$eventsDispatched) {
             $eventsDispatched[] = 'loading';
             return $slug;
         });
-        
-        $this->events->listen('page.loaded', function($page) use (&$eventsDispatched) {
+
+        $this->events->listen('page.loaded', function ($page) use (&$eventsDispatched) {
             $eventsDispatched[] = 'loaded';
             return $page;
         });
-        
+
         $this->service->load('event-test');
-        
+
         $this->assertContains('loading', $eventsDispatched);
         $this->assertContains('loaded', $eventsDispatched);
     }
@@ -68,75 +68,75 @@ final class PageServiceTest extends TestCase
     public function test_dispatches_events_on_save(): void
     {
         $eventsDispatched = [];
-        
-        $this->events->listen('page.saving', function($page) use (&$eventsDispatched) {
+
+        $this->events->listen('page.saving', function ($page) use (&$eventsDispatched) {
             $eventsDispatched[] = 'saving';
             return $page;
         });
-        
-        $this->events->listen('page.saved', function($page) use (&$eventsDispatched) {
+
+        $this->events->listen('page.saved', function ($page) use (&$eventsDispatched) {
             $eventsDispatched[] = 'saved';
             return $page;
         });
-        
+
         $page = new Page('save-event', 'Save Event', 'Content');
         $this->service->save($page);
-        
+
         $this->assertContains('saving', $eventsDispatched);
         $this->assertContains('saved', $eventsDispatched);
     }
-    
+
     public function test_caches_loaded_pages(): void
     {
         $page = new Page('cache-test', 'Cache Test', 'Content');
         $this->service->save($page);
-        
+
         // First load - should cache
         $loaded1 = $this->service->load('cache-test');
-        
+
         // Second load - should hit cache
         $loaded2 = $this->service->load('cache-test');
-        
+
         $this->assertSame($loaded1->title, $loaded2->title);
     }
-    
+
     public function test_clears_cache_on_save(): void
     {
         $page = new Page('cache-clear', 'Cache Clear', 'Original');
         $this->service->save($page);
-        
+
         // Load and cache
         $loaded1 = $this->service->load('cache-clear');
         $this->assertSame('Original', $loaded1->content);
-        
+
         // Update page
         $page->content = 'Updated';
         $this->service->save($page);
-        
+
         // Load again - should get updated version
         $loaded2 = $this->service->load('cache-clear');
         $this->assertSame('Updated', $loaded2->content);
     }
-    
+
     public function test_can_get_published_pages(): void
     {
         $this->service->save(new Page('p1', 'Page 1', 'C', status: 'published'));
         $this->service->save(new Page('p2', 'Page 2', 'C', status: 'published'));
         $this->service->save(new Page('p3', 'Page 3', 'C', status: 'draft'));
-        
+
         $published = $this->service->published();
-        
+
         $this->assertSame(2, $published->count());
     }
-    
+
     public function test_can_get_draft_pages(): void
     {
         $this->service->save(new Page('p1', 'Page 1', 'C', status: 'published'));
         $this->service->save(new Page('p2', 'Page 2', 'C', status: 'draft'));
         $this->service->save(new Page('p3', 'Page 3', 'C', status: 'draft'));
-        
+
         $drafts = $this->service->drafts();
-        
+
         $this->assertSame(2, $drafts->count());
     }
 
@@ -167,20 +167,20 @@ final class PageServiceTest extends TestCase
         $publishedAfterDelete = $this->service->published();
         $this->assertSame(0, $publishedAfterDelete->count());
     }
-    
+
     public function test_can_modify_page_via_event(): void
     {
         // Add event listener that modifies page title
-        $this->events->listen('page.loaded', function($page) {
+        $this->events->listen('page.loaded', function ($page) {
             $page->title = 'Modified: ' . $page->title;
             return $page;
         });
-        
+
         $page = new Page('modify-test', 'Original Title', 'Content');
         $this->service->save($page);
-        
+
         $loaded = $this->service->load('modify-test');
-        
+
         $this->assertSame('Modified: Original Title', $loaded->title);
     }
 }

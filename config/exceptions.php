@@ -12,7 +12,7 @@ return [
      * Example: Throwable::class => fn (Throwable $e, Request $request): Response => ...
      */
     'renderers' => [],
-    
+
     /**
      * Custom exception reporters
      * Maps exception classes to reporting functions

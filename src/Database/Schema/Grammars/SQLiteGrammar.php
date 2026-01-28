@@ -19,24 +19,30 @@ class SQLiteGrammar extends Grammar
             if (!$command instanceof ForeignKeyDefinition) {
                 continue;
             }
-            
+
             $cols = $this->columnize($command->columns);
             $onTable = $this->wrap($command->onTable);
             $refs = $this->columnize($command->references);
-            
+
             $sql = "FOREIGN KEY ({$cols}) REFERENCES {$onTable} ({$refs})";
-            
-            if ($command->onDelete) $sql .= " ON DELETE {$command->onDelete}";
-            if ($command->onUpdate) $sql .= " ON UPDATE {$command->onUpdate}";
-            
+
+            if ($command->onDelete) {
+                $sql .= " ON DELETE {$command->onDelete}";
+            }
+            if ($command->onUpdate) {
+                $sql .= " ON UPDATE {$command->onUpdate}";
+            }
+
             $columns[] = $sql;
         }
 
         foreach ($blueprint->getCommands() as $command) {
-            if ($command instanceof ForeignKeyDefinition) continue;
+            if ($command instanceof ForeignKeyDefinition) {
+                continue;
+            }
 
             $cols = $this->columnize($command['columns']);
-            
+
             if ($command['type'] === 'primary') {
                 $columns[] = "PRIMARY KEY ({$cols})";
             } elseif ($command['type'] === 'unique') {
@@ -52,13 +58,15 @@ class SQLiteGrammar extends Grammar
         $statements = [];
 
         foreach ($blueprint->getCommands() as $command) {
-            if ($command instanceof ForeignKeyDefinition) continue;
-            
+            if ($command instanceof ForeignKeyDefinition) {
+                continue;
+            }
+
             if ($command['type'] === 'index') {
                 $columns = $this->columnize($command['columns']);
                 $table = $this->wrap($blueprint->getTable());
                 $indexName = $this->wrap($command['name'] ?? $this->generateIndexName($blueprint->getTable(), $command['columns'], 'index'));
-                
+
                 $statements[] = "CREATE INDEX {$indexName} ON {$table} ({$columns})";
             }
         }

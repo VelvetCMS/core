@@ -4,9 +4,6 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core;
 
-use VelvetCMS\Services\FileLogger;
-use VelvetCMS\Exceptions\Handler;
-use Psr\Log\LoggerInterface;
 use VelvetCMS\Http\Routing\Router;
 
 class CoreServiceProvider extends ServiceProvider
@@ -17,10 +14,10 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->instance('config', $configRepository);
         $this->app->instance(ConfigRepository::class, $configRepository);
 
-        $this->app->singleton('events', fn() => new EventDispatcher());
+        $this->app->singleton('events', fn () => new EventDispatcher());
         $this->app->alias('events', EventDispatcher::class);
 
-        $this->app->singleton('logger', function() {
+        $this->app->singleton('logger', function () {
             return new \VelvetCMS\Services\FileLogger(
                 logPath: config('logging.path', storage_path('logs/velvet.log')),
                 level: config('logging.level', config('app.log_level', 'info')),
@@ -30,7 +27,7 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('logger', \Psr\Log\LoggerInterface::class);
 
-        $this->app->singleton('exceptions.handler', function() {
+        $this->app->singleton('exceptions.handler', function () {
             $renderers = (array) config('exceptions.renderers', []);
             $reporters = (array) config('exceptions.reporters', []);
             $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
@@ -45,7 +42,7 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\ExceptionHandlerInterface::class);
         $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\Handler::class);
 
-        $this->app->singleton('router', function() {
+        $this->app->singleton('router', function () {
             $router = new Router($this->app->get('events'));
             $router->setApp($this->app);
 
@@ -76,7 +73,7 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('router', Router::class);
 
-        $this->app->singleton('db', function() {
+        $this->app->singleton('db', function () {
             $config = config('db');
 
             if (!is_array($config)) {
@@ -87,7 +84,7 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('db', \VelvetCMS\Database\Connection::class);
 
-        $this->app->singleton('cache', function() {
+        $this->app->singleton('cache', function () {
             $driver = config('cache.default', 'file');
             $config = config("cache.drivers.{$driver}", []);
             $config['path'] = $config['path'] ?? storage_path('cache');
@@ -106,24 +103,24 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('cache', \VelvetCMS\Contracts\CacheDriver::class);
 
-        $this->app->singleton('tenant', fn() => \VelvetCMS\Core\Tenancy\TenancyManager::current());
+        $this->app->singleton('tenant', fn () => \VelvetCMS\Core\Tenancy\TenancyManager::current());
         $this->app->alias('tenant', \VelvetCMS\Core\Tenancy\TenantContext::class);
 
-        $this->app->singleton('cache.tags', function() {
+        $this->app->singleton('cache.tags', function () {
             return new \VelvetCMS\Support\Cache\CacheTagManager(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class)
             );
         });
         $this->app->alias('cache.tags', \VelvetCMS\Support\Cache\CacheTagManager::class);
 
-        $this->app->singleton(\VelvetCMS\Contracts\ParserInterface::class, function() {
+        $this->app->singleton(\VelvetCMS\Contracts\ParserInterface::class, function () {
             $driver = config('content.parser.driver', 'commonmark');
             $driverConfig = config("content.parser.drivers.{$driver}", []);
 
             return (new \VelvetCMS\Services\Parsers\ParserFactory())->make($driver, $driverConfig);
         });
 
-        $this->app->singleton('parser', function() {
+        $this->app->singleton('parser', function () {
             return new \VelvetCMS\Services\ContentParser(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class),
                 $this->app->make(\VelvetCMS\Contracts\ParserInterface::class)
@@ -131,16 +128,16 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('parser', \VelvetCMS\Services\ContentParser::class);
 
-        $this->app->singleton('view', fn() => new \VelvetCMS\Services\ViewEngine());
+        $this->app->singleton('view', fn () => new \VelvetCMS\Services\ViewEngine());
         $this->app->alias('view', \VelvetCMS\Services\ViewEngine::class);
 
-        $this->app->singleton(\VelvetCMS\Database\Migrations\MigrationRepository::class, function() {
+        $this->app->singleton(\VelvetCMS\Database\Migrations\MigrationRepository::class, function () {
             return new \VelvetCMS\Database\Migrations\MigrationRepository(
                 $this->app->make(\VelvetCMS\Database\Connection::class)
             );
         });
 
-        $this->app->singleton('migrator', function() {
+        $this->app->singleton('migrator', function () {
             return new \VelvetCMS\Database\Migrations\Migrator(
                 $this->app->make(\VelvetCMS\Database\Connection::class),
                 $this->app->make(\VelvetCMS\Database\Migrations\MigrationRepository::class)
@@ -148,10 +145,10 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('migrator', \VelvetCMS\Database\Migrations\Migrator::class);
 
-        $this->app->singleton('session', fn() => new \VelvetCMS\Services\SessionManager());
+        $this->app->singleton('session', fn () => new \VelvetCMS\Services\SessionManager());
         $this->app->alias('session', \VelvetCMS\Services\SessionManager::class);
 
-        $this->app->singleton('rate_limiter', function() {
+        $this->app->singleton('rate_limiter', function () {
             $rateLimiter = new \VelvetCMS\Http\RateLimiting\RateLimiter(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class)
             );
@@ -162,13 +159,13 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('rate_limiter', \VelvetCMS\Http\RateLimiting\RateLimiter::class);
         $this->app->alias('rate_limiter', \VelvetCMS\Contracts\RateLimiterInterface::class);
 
-        $this->app->singleton('schedule', fn() => new \VelvetCMS\Scheduling\Schedule());
+        $this->app->singleton('schedule', fn () => new \VelvetCMS\Scheduling\Schedule());
         $this->app->alias('schedule', \VelvetCMS\Scheduling\Schedule::class);
 
-        $this->app->singleton('storage', fn() => new \VelvetCMS\Services\StorageManager(config('filesystems', [])));
+        $this->app->singleton('storage', fn () => new \VelvetCMS\Services\StorageManager(config('filesystems', [])));
         $this->app->alias('storage', \VelvetCMS\Services\StorageManager::class);
 
-        $this->app->singleton('modules', function() {
+        $this->app->singleton('modules', function () {
             $manager = new ModuleManager($this->app);
             $manager->load();
             $manager->register();
@@ -191,7 +188,7 @@ class CoreServiceProvider extends ServiceProvider
 
         if (config('app.cron_enabled', false)) {
             $router = $this->app->make('router');
-            $router->get('/system/cron', function() {
+            $router->get('/system/cron', function () {
                 $controller = new \VelvetCMS\Http\Controllers\WebCronController(
                     $this->app,
                     $this->app->make(\VelvetCMS\Scheduling\Schedule::class)

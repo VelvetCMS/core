@@ -8,7 +8,7 @@ declare(strict_types=1);
 return [
     /** Default database connection */
     'default' => env('DB_CONNECTION', 'sqlite'),
-    
+
     /** Database connections */
     'connections' => [
         'sqlite' => [
@@ -16,7 +16,7 @@ return [
             'database' => env('DB_DATABASE', base_path('storage/database.sqlite')),
             'prefix' => '',
         ],
-        
+
         'mysql' => [
             'driver' => 'mysql',
             'host' => env('DB_HOST', '127.0.0.1'),
@@ -28,7 +28,7 @@ return [
             'collation' => 'utf8mb4_unicode_ci',
             'prefix' => '',
         ],
-        
+
         'pgsql' => [
             'driver' => 'pgsql',
             'host' => env('DB_HOST', '127.0.0.1'),

@@ -17,32 +17,32 @@ class ClearCommand extends Command
     {
         return 'cache:clear';
     }
-    
+
     public function description(): string
     {
         return 'Clear all cached data';
     }
-    
+
     public function handle(): int
     {
         $this->info('Clearing application cache...');
-        
+
         $cachePath = storage_path('cache');
         $cleared = 0;
-        
+
         if (!is_dir($cachePath)) {
             $this->warning('Cache directory not found');
             return 0;
         }
-        
+
         $files = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($cachePath, \RecursiveDirectoryIterator::SKIP_DOTS),
             \RecursiveIteratorIterator::CHILD_FIRST
         );
-        
+
         foreach ($files as $fileinfo) {
             $path = $fileinfo->getRealPath();
-            
+
             if ($fileinfo->isDir()) {
                 rmdir($path);
             } else {
@@ -50,9 +50,9 @@ class ClearCommand extends Command
                 $cleared++;
             }
         }
-        
+
         $this->success("Cache cleared! ({$cleared} files removed)");
-        
+
         return 0;
     }
 }

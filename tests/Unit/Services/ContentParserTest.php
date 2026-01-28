@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Services;
 
-use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Drivers\Cache\FileCache;
+use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ContentParserTest extends TestCase
@@ -16,7 +16,7 @@ final class ContentParserTest extends TestCase
             'path' => $this->tmpDir . '/cache',
             'prefix' => 'test',
         ]);
-        
+
         $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser(['html_input' => 'allow']);
 
         return new ContentParser($cache, $commonMark);
@@ -29,7 +29,7 @@ final class ContentParserTest extends TestCase
 
         $this->assertSame(['title' => 'Post'], $parsed['frontmatter']);
         $this->assertStringContainsString('<em>world</em>', $parsed['html']);
-        $this->assertSame("Hello *world*.", ltrim($parsed['body']));
+        $this->assertSame('Hello *world*.', ltrim($parsed['body']));
     }
 
     public function test_blocks_are_rendered_as_markdown_by_default(): void
@@ -46,9 +46,9 @@ final class ContentParserTest extends TestCase
     {
         $parser = $this->parser();
         $content = "@html\n<p>test</p>\n@endhtml";
-        
+
         $parsed = $parser->parse($content, 'markdown');
-        
+
         $this->assertStringContainsString('@html', $parsed['html']);
     }
 }

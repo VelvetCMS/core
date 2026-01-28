@@ -21,20 +21,36 @@ final class RateLimitingTest extends TestCase
     {
         parent::setUp();
 
-        $this->cache = new class implements CacheDriver {
+        $this->cache = new class () implements CacheDriver {
             public array $storage = [];
 
-            public function get(string $key, mixed $default = null): mixed {
+            public function get(string $key, mixed $default = null): mixed
+            {
                 return $this->storage[$key] ?? $default;
             }
-            public function set(string $key, mixed $value, int $ttl = 3600): bool {
+            public function set(string $key, mixed $value, int $ttl = 3600): bool
+            {
                 $this->storage[$key] = $value;
                 return true;
             }
-            public function has(string $key): bool { return isset($this->storage[$key]); }
-            public function delete(string $key): bool { unset($this->storage[$key]); return true; }
-            public function clear(): bool { $this->storage = []; return true; }
-            public function remember(string $key, int $ttl, callable $callback): mixed { return $callback(); }
+            public function has(string $key): bool
+            {
+                return isset($this->storage[$key]);
+            }
+            public function delete(string $key): bool
+            {
+                unset($this->storage[$key]);
+                return true;
+            }
+            public function clear(): bool
+            {
+                $this->storage = [];
+                return true;
+            }
+            public function remember(string $key, int $ttl, callable $callback): mixed
+            {
+                return $callback();
+            }
         };
 
         $this->rateLimiter = new RateLimiter($this->cache);
@@ -107,7 +123,9 @@ final class RateLimitingTest extends TestCase
 
     public function test_register_dynamic_limiter(): void
     {
-        $this->rateLimiter->for('dynamic', fn(Request $request) => 
+        $this->rateLimiter->for(
+            'dynamic',
+            fn (Request $request) =>
             $request->ip() === '10.0.0.1' ? Limit::perMinute(1000) : Limit::perMinute(10)
         );
 
@@ -179,7 +197,7 @@ final class RateLimitingTest extends TestCase
     {
         $middleware = new ThrottleRequests($this->rateLimiter);
         $request = Request::capture();
-        $next = fn() => Response::html('ok');
+        $next = fn () => Response::html('ok');
 
         $response = $middleware->handle($request, $next);
 
@@ -192,7 +210,7 @@ final class RateLimitingTest extends TestCase
     {
         $middleware = new ThrottleRequests($this->rateLimiter);
         $request = Request::capture();
-        $next = fn() => Response::html('ok');
+        $next = fn () => Response::html('ok');
 
         $middleware->handle($request, $next);
         $middleware->handle($request, $next);
@@ -207,7 +225,7 @@ final class RateLimitingTest extends TestCase
         $this->rateLimiter->for('generous', Limit::perMinute(100));
         $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('generous');
 
-        $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+        $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
         $this->assertSame('100', $response->getHeader('X-RateLimit-Limit'));
     }
@@ -216,7 +234,7 @@ final class RateLimitingTest extends TestCase
     {
         $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('50,2');
 
-        $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+        $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
         $this->assertSame('50', $response->getHeader('X-RateLimit-Limit'));
     }
@@ -228,7 +246,7 @@ final class RateLimitingTest extends TestCase
         $middleware = new ThrottleRequests($rateLimiter);
 
         for ($i = 0; $i < 10; $i++) {
-            $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+            $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
             $this->assertSame(200, $response->getStatus());
         }
     }
@@ -239,7 +257,7 @@ final class RateLimitingTest extends TestCase
         $middleware = new ThrottleRequests($this->rateLimiter);
 
         for ($i = 0; $i < 10; $i++) {
-            $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+            $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
             $this->assertSame(200, $response->getStatus());
         }
     }
@@ -250,17 +268,17 @@ final class RateLimitingTest extends TestCase
         $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('unlimited');
 
         for ($i = 0; $i < 10; $i++) {
-            $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+            $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
             $this->assertSame(200, $response->getStatus());
         }
     }
 
     public function test_middleware_dynamic_limiter(): void
     {
-        $this->rateLimiter->for('dynamic', fn() => Limit::perMinute(5));
+        $this->rateLimiter->for('dynamic', fn () => Limit::perMinute(5));
         $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('dynamic');
 
-        $response = $middleware->handle(Request::capture(), fn() => Response::html('ok'));
+        $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
         $this->assertSame('5', $response->getHeader('X-RateLimit-Limit'));
     }

@@ -161,7 +161,7 @@ final class ConnectionTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Unsupported driver');
-        
+
         $connection->getPdo();
     }
 }

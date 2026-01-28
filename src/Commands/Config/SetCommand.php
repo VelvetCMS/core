@@ -11,7 +11,8 @@ class SetCommand extends Command
 {
     public function __construct(
         private readonly ConfigRepository $config
-    ) {}
+    ) {
+    }
 
     public static function category(): string
     {
@@ -34,24 +35,28 @@ class SetCommand extends Command
         $value = $this->argument(1);
 
         if (!$key) {
-            $key = $this->ask("Configuration key (e.g. app.debug)");
+            $key = $this->ask('Configuration key (e.g. app.debug)');
             if (!$key) {
-                $this->error("Key is required.");
+                $this->error('Key is required.');
                 return 1;
             }
         }
 
         if ($value === null) {
-            $value = $this->ask("Value");
+            $value = $this->ask('Value');
         }
 
-        if ($value === 'true') $value = true;
-        elseif ($value === 'false') $value = false;
-        elseif (is_numeric($value)) $value = (strpos($value, '.') !== false) ? (float)$value : (int)$value;
+        if ($value === 'true') {
+            $value = true;
+        } elseif ($value === 'false') {
+            $value = false;
+        } elseif (is_numeric($value)) {
+            $value = (strpos($value, '.') !== false) ? (float)$value : (int)$value;
+        }
 
         try {
             $filePath = $this->config->persist($key, $value);
-            $this->info("Configuration saved to " . str_replace(base_path() . '/', '', $filePath));
+            $this->info('Configuration saved to ' . str_replace(base_path() . '/', '', $filePath));
             return 0;
         } catch (\Exception $e) {
             $this->error($e->getMessage());

@@ -120,7 +120,7 @@ class ModuleManager
         }
 
         $mappings = require $autoloadPath;
-        
+
         // Strict format: require psr-4 key
         if (!isset($mappings['psr-4'])) {
             return;
@@ -136,7 +136,7 @@ class ModuleManager
             }
         }
 
-        spl_autoload_register(function($class) use ($psr4) {
+        spl_autoload_register(function ($class) use ($psr4) {
             // Check each namespace mapping
             foreach ($psr4 as $namespace => $path) {
                 // Check if class is in this namespace
@@ -438,7 +438,7 @@ class ModuleManager
         $visited = [];
         $visiting = [];
 
-        $visit = function(string $name) use (&$visit, &$sorted, &$visited, &$visiting, $modules) {
+        $visit = function (string $name) use (&$visit, &$sorted, &$visited, &$visiting, $modules) {
             if (isset($visited[$name])) {
                 return;
             }

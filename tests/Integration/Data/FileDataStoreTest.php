@@ -25,10 +25,10 @@ final class FileDataStoreTest extends TestCase
         $this->store->put('settings', 'site', $data);
 
         $retrieved = $this->store->get('settings', 'site');
-        
+
         $this->assertArrayHasKey('_key', $retrieved);
         $this->assertArrayHasKey('_updated_at', $retrieved);
-        
+
         unset($retrieved['_key'], $retrieved['_updated_at'], $retrieved['_created_at']);
         $this->assertSame($data, $retrieved);
     }
@@ -41,7 +41,7 @@ final class FileDataStoreTest extends TestCase
     public function test_can_check_existence(): void
     {
         $this->store->put('users', '1', ['id' => 1]);
-        
+
         $this->assertTrue($this->store->has('users', '1'));
         $this->assertFalse($this->store->has('users', '2'));
     }
@@ -50,7 +50,7 @@ final class FileDataStoreTest extends TestCase
     {
         $this->store->put('temp', 'key', ['foo' => 'bar']);
         $this->assertTrue($this->store->forget('temp', 'key'));
-        
+
         $this->assertNull($this->store->get('temp', 'key'));
         $this->assertFalse($this->store->forget('temp', 'key')); // Already gone
     }
@@ -59,9 +59,9 @@ final class FileDataStoreTest extends TestCase
     {
         $this->store->put('posts', '1', ['title' => 'One']);
         $this->store->put('posts', '2', ['title' => 'Two']);
-        
+
         $all = $this->store->all('posts');
-        
+
         $this->assertCount(2, $all);
         $this->assertArrayHasKey('1', $all);
         $this->assertArrayHasKey('2', $all);
@@ -70,14 +70,14 @@ final class FileDataStoreTest extends TestCase
     public function test_persists_to_disk(): void
     {
         $this->store->put('disk', 'test', ['saved' => true]);
-        
+
         // Create new instance to verify persistence
         $newStore = new FileDataStore($this->dataPath);
         $retrieved = $newStore->get('disk', 'test');
-        
+
         unset($retrieved['_key'], $retrieved['_updated_at'], $retrieved['_created_at']);
         $this->assertSame(['saved' => true], $retrieved);
-        
+
         $this->assertFileExists($this->dataPath . '/disk/test.json');
     }
 }

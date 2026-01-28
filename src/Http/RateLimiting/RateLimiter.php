@@ -19,7 +19,8 @@ class RateLimiter implements RateLimiterInterface
 
     public function __construct(
         private readonly CacheDriver $cache
-    ) {}
+    ) {
+    }
 
     public function for(string $name, Limit|Closure $limiter): self
     {
@@ -173,14 +174,9 @@ class RateLimiter implements RateLimiterInterface
                 $parts[] = $request->ip() ?? 'unknown';
                 break;
 
-            case 'user':
-                $user = $request->user();
-                $parts[] = $user ? ('user:' . $user->id) : ('ip:' . ($request->ip() ?? 'unknown'));
-                break;
-
             case 'ip_route':
                 $parts[] = $request->ip() ?? 'unknown';
-                $parts[] = $request->getMethod() . ':' . $request->getPath();
+                $parts[] = $request->method() . ':' . $request->path();
                 break;
 
             default:

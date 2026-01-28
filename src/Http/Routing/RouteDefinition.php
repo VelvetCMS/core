@@ -12,7 +12,8 @@ class RouteDefinition
     public function __construct(
         private readonly Router $router,
         private readonly int $routeId
-    ) {}
+    ) {
+    }
 
     /**
      * Attach middleware to this route.

@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Services\Parsers;
 
-use VelvetCMS\Contracts\ParserInterface;
 use InvalidArgumentException;
 use RuntimeException;
+use VelvetCMS\Contracts\ParserInterface;
 
 class ParserFactory
 {
@@ -25,7 +25,7 @@ class ParserFactory
         if (!class_exists(\League\CommonMark\MarkdownConverter::class)) {
             throw new RuntimeException(
                 "The 'commonmark' driver requires the 'league/commonmark' package.\n" .
-                "Please run: composer require league/commonmark"
+                'Please run: composer require league/commonmark'
             );
         }
 

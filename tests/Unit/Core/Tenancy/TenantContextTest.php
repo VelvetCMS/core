@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
-use VelvetCMS\Core\Tenancy\TenantContext;
 use PHPUnit\Framework\TestCase;
+use VelvetCMS\Core\Tenancy\TenantContext;
 
 final class TenantContextTest extends TestCase
 {

@@ -6,7 +6,7 @@ namespace VelvetCMS\Contracts;
 
 /**
  * Simple key-value storage with collections.
- * 
+ *
  * For complex queries, use Connection directly.
  * This is for settings, menus, small config-like data.
  */

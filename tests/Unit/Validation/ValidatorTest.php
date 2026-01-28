@@ -11,7 +11,7 @@ use VelvetCMS\Validation\Validator;
 final class ValidatorTest extends TestCase
 {
     // === Required Rule ===
-    
+
     public function test_required_fails_for_null(): void
     {
         $this->expectException(ValidationException::class);
@@ -49,7 +49,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Email Rule ===
-    
+
     public function test_email_passes_for_valid_email(): void
     {
         $validated = Validator::make(
@@ -67,7 +67,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === URL Rule ===
-    
+
     public function test_url_passes_for_valid_url(): void
     {
         $validated = Validator::make(
@@ -85,7 +85,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Numeric / Integer Rules ===
-    
+
     public function test_numeric_passes_for_integer(): void
     {
         $validated = Validator::make(['num' => 42], ['num' => 'numeric'])->validate();
@@ -135,7 +135,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Boolean Rule ===
-    
+
     public function test_boolean_passes_for_true(): void
     {
         $validated = Validator::make(['flag' => true], ['flag' => 'boolean'])->validate();
@@ -170,7 +170,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Min / Max Rules ===
-    
+
     public function test_min_passes_for_sufficient_length(): void
     {
         $validated = Validator::make(['name' => 'John'], ['name' => 'min:3'])->validate();
@@ -206,7 +206,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Alpha / Alphanumeric Rules ===
-    
+
     public function test_alpha_passes_for_letters_only(): void
     {
         $validated = Validator::make(['name' => 'John'], ['name' => 'alpha'])->validate();
@@ -232,7 +232,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === In Rule ===
-    
+
     public function test_in_passes_for_allowed_value(): void
     {
         $validated = Validator::make(
@@ -253,7 +253,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Regex Rule ===
-    
+
     public function test_regex_passes_for_matching_pattern(): void
     {
         $validated = Validator::make(
@@ -274,7 +274,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Same / Different Rules ===
-    
+
     public function test_same_passes_when_fields_match(): void
     {
         $validated = Validator::make(
@@ -314,7 +314,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Date Rule ===
-    
+
     public function test_date_passes_for_valid_date(): void
     {
         $validated = Validator::make(['date' => '2025-01-15'], ['date' => 'date'])->validate();
@@ -336,7 +336,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Array Rule ===
-    
+
     public function test_array_passes_for_array(): void
     {
         $validated = Validator::make(['items' => [1, 2, 3]], ['items' => 'array'])->validate();
@@ -350,7 +350,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Optional Fields ===
-    
+
     public function test_optional_field_skipped_when_missing(): void
     {
         $validated = Validator::make(
@@ -371,7 +371,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Combined Rules ===
-    
+
     public function test_multiple_rules_all_pass(): void
     {
         $validated = Validator::make(
@@ -408,7 +408,7 @@ final class ValidatorTest extends TestCase
     }
 
     // === Error Messages ===
-    
+
     public function test_validation_exception_contains_all_errors(): void
     {
         try {
@@ -423,38 +423,38 @@ final class ValidatorTest extends TestCase
             $this->assertArrayHasKey('age', $errors);
         }
     }
-    
+
     // === Custom Extensions ===
-    
+
     public function test_extend_with_boolean_return(): void
     {
-        Validator::extend('lowercase', fn($value) => $value === strtolower($value));
-        
+        Validator::extend('lowercase', fn ($value) => $value === strtolower($value));
+
         $validated = Validator::make(
             ['name' => 'hello'],
             ['name' => 'lowercase']
         )->validate();
-        
+
         $this->assertSame('hello', $validated['name']);
     }
-    
+
     public function test_extend_fails_with_false(): void
     {
-        Validator::extend('lowercase', fn($value) => $value === strtolower($value));
-        
+        Validator::extend('lowercase', fn ($value) => $value === strtolower($value));
+
         $this->expectException(ValidationException::class);
         Validator::make(['name' => 'HELLO'], ['name' => 'lowercase'])->validate();
     }
-    
+
     public function test_extend_with_custom_message(): void
     {
-        Validator::extend('slug', function($value, $parameter, $data, $field) {
+        Validator::extend('slug', function ($value, $parameter, $data, $field) {
             if (!preg_match('/^[a-z0-9-]+$/', $value)) {
                 return "The {$field} must be a valid slug (lowercase letters, numbers, hyphens).";
             }
             return true;
         });
-        
+
         try {
             Validator::make(['url' => 'Not A Slug!'], ['url' => 'slug'])->validate();
             $this->fail('Expected ValidationException');
@@ -462,36 +462,36 @@ final class ValidatorTest extends TestCase
             $this->assertStringContainsString('valid slug', $e->getErrors()['url'][0]);
         }
     }
-    
+
     public function test_extend_with_parameter(): void
     {
-        Validator::extend('divisible', fn($value, $param) => $value % (int)$param === 0);
-        
+        Validator::extend('divisible', fn ($value, $param) => $value % (int)$param === 0);
+
         $validated = Validator::make(['num' => 10], ['num' => 'divisible:5'])->validate();
         $this->assertSame(10, $validated['num']);
-        
+
         $this->expectException(ValidationException::class);
         Validator::make(['num' => 7], ['num' => 'divisible:3'])->validate();
     }
-    
+
     public function test_extend_can_access_other_fields(): void
     {
-        Validator::extend('greater_than', function($value, $param, $data) {
+        Validator::extend('greater_than', function ($value, $param, $data) {
             return $value > ($data[$param] ?? 0);
         });
-        
+
         $validated = Validator::make(
             ['min' => 5, 'max' => 10],
             ['max' => 'greater_than:min']
         )->validate();
-        
+
         $this->assertSame(10, $validated['max']);
     }
-    
+
     public function test_has_extension(): void
     {
-        Validator::extend('custom_rule', fn() => true);
-        
+        Validator::extend('custom_rule', fn () => true);
+
         $this->assertTrue(Validator::hasExtension('custom_rule'));
         $this->assertFalse(Validator::hasExtension('nonexistent'));
     }

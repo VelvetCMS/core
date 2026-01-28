@@ -12,7 +12,7 @@ class Validator
     private array $data;
     private array $rules;
     private array $errors = [];
-    
+
     /** @var array<string, Closure> */
     private static array $extensions = [];
 
@@ -26,10 +26,10 @@ class Validator
     {
         return new self($data, $rules);
     }
-    
+
     /**
      * Register a custom validation rule.
-     * 
+     *
      * Callback signature: fn(mixed $value, ?string $parameter, array $data, string $field): bool|string
      * Return true if valid, false or error message string if invalid.
      */
@@ -37,7 +37,7 @@ class Validator
     {
         self::$extensions[$rule] = $callback;
     }
-    
+
     public static function hasExtension(string $rule): bool
     {
         return isset(self::$extensions[$rule]);
@@ -63,7 +63,7 @@ class Validator
                         continue;
                     }
                 }
-                
+
                 if ($this->isEmptyValue($value)) {
                     continue;
                 }
@@ -84,7 +84,7 @@ class Validator
         // Check custom extensions first
         if (isset(self::$extensions[$rule])) {
             $result = (self::$extensions[$rule])($value, $parameter, $this->data, $field);
-            
+
             if ($result === false) {
                 $this->addError($field, "The {$field} field is invalid.");
             } elseif (is_string($result)) {
@@ -92,7 +92,7 @@ class Validator
             }
             return;
         }
-        
+
         switch ($rule) {
             case 'max':
                 $max = (int) $parameter;
@@ -100,7 +100,7 @@ class Validator
                     $this->addError($field, "The {$field} may not be greater than {$max} characters.");
                 }
                 break;
-                
+
             case 'min':
                 $min = (int) $parameter;
                 if ($this->valueLength($value) < $min) {
@@ -162,7 +162,7 @@ class Validator
                     $this->addError($field, "The {$field} format is invalid.");
                 }
                 break;
-            
+
             case 'same':
                 $otherValue = $this->getValue($parameter);
                 if ($value !== $otherValue) {
@@ -176,13 +176,13 @@ class Validator
                     $this->addError($field, "The {$field} must be different from {$parameter}.");
                 }
                 break;
-                
+
             case 'date':
                 if (!is_string($value) || !strtotime($value)) {
                     $this->addError($field, "The {$field} is not a valid date.");
                 }
                 break;
-                
+
             case 'array':
                 if (!is_array($value)) {
                     $this->addError($field, "The {$field} must be an array.");

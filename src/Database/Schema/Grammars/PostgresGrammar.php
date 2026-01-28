@@ -45,7 +45,7 @@ class PostgresGrammar extends Grammar
             $columns = $this->columnize($command['columns']);
             $table = $this->wrap($blueprint->getTable());
             $indexName = $this->wrap($command['name'] ?? $this->generateIndexName($blueprint->getTable(), $command['columns'], $command['type']));
-            
+
             if ($command['type'] === 'unique') {
                 $statements[] = "CREATE UNIQUE INDEX {$indexName} ON {$table} ({$columns})";
             } elseif ($command['type'] === 'index') {

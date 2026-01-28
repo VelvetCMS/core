@@ -25,9 +25,13 @@ final class ApplicationTest extends TestCase
     }
 }
 
-final class DummyDep {}
+final class DummyDep
+{
+}
 
 final class DummyService
 {
-    public function __construct(public DummyDep $dep = new DummyDep()) {}
+    public function __construct(public DummyDep $dep = new DummyDep())
+    {
+    }
 }

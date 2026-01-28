@@ -12,7 +12,8 @@ final class TenantContext
         private readonly ?string $pathPrefix = null,
         private readonly ?string $urlPrefix = null,
         private readonly array $metadata = []
-    ) {}
+    ) {
+    }
 
     public function id(): string
     {

@@ -20,16 +20,16 @@ final class CollectionTest extends TestCase
     public function test_map_transforms_items(): void
     {
         $c = new Collection([1, 2, 3]);
-        $mapped = $c->map(fn($n) => $n * 2);
-        
+        $mapped = $c->map(fn ($n) => $n * 2);
+
         $this->assertSame([2, 4, 6], $mapped->all());
     }
 
     public function test_filter_removes_items(): void
     {
         $c = new Collection([1, 2, 3, 4]);
-        $filtered = $c->filter(fn($n) => $n % 2 === 0);
-        
+        $filtered = $c->filter(fn ($n) => $n % 2 === 0);
+
         $this->assertSame([2, 4], array_values($filtered->all()));
     }
 
@@ -40,7 +40,7 @@ final class CollectionTest extends TestCase
             ['id' => 2, 'name' => 'B'],
         ];
         $c = new Collection($data);
-        
+
         $names = $c->pluck('name');
         $this->assertSame(['A', 'B'], $names->all());
     }
@@ -49,7 +49,7 @@ final class CollectionTest extends TestCase
     {
         $c = new Collection([1, 2, 3, 4, 5]);
         $chunks = $c->chunk(2);
-        
+
         $this->assertCount(3, $chunks);
         $this->assertSame([1, 2], $chunks->get(0)->all());
         $this->assertSame([5], $chunks->get(2)->all());
@@ -59,10 +59,10 @@ final class CollectionTest extends TestCase
     {
         $c = new Collection([3, 1, 2]);
         $sorted = $c->sort();
-        
+
         $this->assertSame([1, 2, 3], $sorted->all());
-        
-        $desc = $c->sort(fn($a, $b) => $b <=> $a);
+
+        $desc = $c->sort(fn ($a, $b) => $b <=> $a);
         $this->assertSame([3, 2, 1], $desc->all());
     }
 }

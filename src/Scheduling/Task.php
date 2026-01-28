@@ -36,7 +36,7 @@ class Task
             // Run in foreground
             $command = build_cli_command($binary, $velvet, $this->command);
             passthru($command);
-            return; 
+            return;
         }
 
         if (is_callable($this->callback)) {
@@ -53,7 +53,7 @@ class Task
     {
         $date = new \DateTime();
         $cronParts = explode(' ', $this->expression);
-        
+
         if (count($cronParts) !== 5) {
             return false;
         }
@@ -80,7 +80,9 @@ class Task
 
         if (str_contains($expression, '/')) {
             list($base, $step) = explode('/', $expression);
-            if ($base === '*') $base = 0;
+            if ($base === '*') {
+                $base = 0;
+            }
             return ($current % (int)$step) === 0;
         }
 
@@ -112,12 +114,12 @@ class Task
         $this->expression = sprintf('%d %d * * *', $minute, $hour);
         return $this;
     }
-    
+
     public function getCommand(): ?string
     {
         return $this->command;
     }
-    
+
     public function getParameters(): array
     {
         return $this->parameters;

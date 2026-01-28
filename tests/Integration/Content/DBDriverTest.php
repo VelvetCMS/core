@@ -22,7 +22,7 @@ final class DBDriverTest extends TestCase
 
         $dbPath = $this->tmpDir . '/db.sqlite';
         $pdo = new PDO('sqlite:' . $dbPath);
-        
+
         // Create pages table
         $pdo->exec("
             CREATE TABLE pages (
@@ -61,30 +61,30 @@ final class DBDriverTest extends TestCase
             content: '# Database Storage',
             status: 'published'
         );
-        
+
         $result = $this->driver->save($page);
         $this->assertTrue($result);
-        
+
         $loaded = $this->driver->load('test-db');
-        
+
         $this->assertSame('test-db', $loaded->slug);
         $this->assertSame('Test DB Page', $loaded->title);
         $this->assertSame('# Database Storage', $loaded->content);
         $this->assertSame('published', $loaded->status);
     }
-    
+
     public function test_can_update_existing_page(): void
     {
         $page = new Page('update-test', 'Original', 'Original content');
         $this->driver->save($page);
-        
+
         // Update
         $page->title = 'Updated';
         $page->content = 'Updated content';
         $this->driver->save($page);
-        
+
         $loaded = $this->driver->load('update-test');
-        
+
         $this->assertSame('Updated', $loaded->title);
         $this->assertSame('Updated content', $loaded->content);
     }
@@ -94,19 +94,19 @@ final class DBDriverTest extends TestCase
         $page = new Page('meta-test', 'Meta', 'Content');
         $page->setMeta('author', 'Velvet');
         $page->setMeta('tags', ['a', 'b']);
-        
+
         $this->driver->save($page);
-        
+
         // Verify raw DB content
-        $stmt = $this->db->getPdo()->prepare("SELECT meta FROM pages WHERE slug = ?");
+        $stmt = $this->db->getPdo()->prepare('SELECT meta FROM pages WHERE slug = ?');
         $stmt->execute(['meta-test']);
         $rawMeta = $stmt->fetchColumn();
-        
+
         $this->assertJson($rawMeta);
         $decoded = json_decode($rawMeta, true);
         $this->assertSame('Velvet', $decoded['author']);
         $this->assertSame(['a', 'b'], $decoded['tags']);
-        
+
         // Verify loaded object
         $loaded = $this->driver->load('meta-test');
         $this->assertSame('Velvet', $loaded->getMeta('author'));
@@ -122,9 +122,9 @@ final class DBDriverTest extends TestCase
     {
         $page = new Page('delete-me', 'Delete Me', 'Content');
         $this->driver->save($page);
-        
+
         $this->assertTrue($this->driver->delete('delete-me'));
-        
+
         $this->expectException(NotFoundException::class);
         $this->driver->load('delete-me');
     }

@@ -9,14 +9,14 @@ use VelvetCMS\Contracts\DataStore;
 class FileDataStore implements DataStore
 {
     private string $basePath;
-    
+
     /** @var array<string, array<string, array>> In-memory cache per collection */
     private array $cache = [];
 
     public function __construct(?string $basePath = null)
     {
         $this->basePath = $basePath ?? storage_path('data');
-        
+
         if (!is_dir($this->basePath)) {
             mkdir($this->basePath, 0755, true);
         }
@@ -29,46 +29,46 @@ class FileDataStore implements DataStore
         }
 
         $file = $this->path($collection, $key);
-        
+
         if (!file_exists($file)) {
             return null;
         }
 
         $data = json_decode(file_get_contents($file), true);
-        
+
         if (!is_array($data)) {
             return null;
         }
 
         $this->cache[$collection][$key] = $data;
-        
+
         return $data;
     }
 
     public function put(string $collection, string $key, array $data): void
     {
         $this->ensureDir($collection);
-        
+
         $data['_key'] = $key;
         $data['_updated_at'] = date('Y-m-d H:i:s');
         $data['_created_at'] ??= $data['_updated_at'];
 
         $file = $this->path($collection, $key);
         file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
-        
+
         $this->cache[$collection][$key] = $data;
     }
 
     public function forget(string $collection, string $key): bool
     {
         $file = $this->path($collection, $key);
-        
+
         if (!file_exists($file)) {
             return false;
         }
 
         unset($this->cache[$collection][$key]);
-        
+
         return unlink($file);
     }
 
@@ -77,23 +77,23 @@ class FileDataStore implements DataStore
         if (isset($this->cache[$collection][$key])) {
             return true;
         }
-        
+
         return file_exists($this->path($collection, $key));
     }
 
     public function all(string $collection): array
     {
         $dir = $this->collectionPath($collection);
-        
+
         if (!is_dir($dir)) {
             return [];
         }
 
         $records = [];
-        
+
         foreach (glob($dir . '/*.json') as $file) {
             $key = basename($file, '.json');
-            
+
             // Skip internal files
             if (str_starts_with($key, '_')) {
                 continue;
@@ -108,14 +108,14 @@ class FileDataStore implements DataStore
     public function filter(string $collection, callable $predicate): array
     {
         $all = $this->all($collection);
-        
+
         return array_filter($all, $predicate);
     }
 
     public function clear(string $collection): void
     {
         $dir = $this->collectionPath($collection);
-        
+
         if (!is_dir($dir)) {
             return;
         }
@@ -125,7 +125,7 @@ class FileDataStore implements DataStore
         }
 
         unset($this->cache[$collection]);
-        
+
         @rmdir($dir);
     }
 
@@ -152,7 +152,7 @@ class FileDataStore implements DataStore
     private function ensureDir(string $collection): void
     {
         $dir = $this->collectionPath($collection);
-        
+
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }

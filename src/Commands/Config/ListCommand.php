@@ -11,7 +11,8 @@ class ListCommand extends Command
 {
     public function __construct(
         private readonly ConfigRepository $config
-    ) {}
+    ) {
+    }
 
     public static function category(): string
     {

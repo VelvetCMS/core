@@ -6,8 +6,8 @@ namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
 use ReflectionClass;
 use VelvetCMS\Contracts\TenantResolverInterface;
-use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Core\Tenancy\TenancyManager;
+use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Tests\Support\TestCase;
 

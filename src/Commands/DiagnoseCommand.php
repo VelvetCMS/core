@@ -19,12 +19,13 @@ class DiagnoseCommand extends Command
     }
 
     public function __construct(
-        private readonly Application $app,
+        protected readonly Application $app,
         private readonly CacheDriver $cache,
         private readonly ModuleManager $modules,
         private readonly ContentDriver $contentDriver,
         private readonly Connection $connection
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {
@@ -46,7 +47,7 @@ class DiagnoseCommand extends Command
             'modules' => $this->inspectModules(),
         ];
 
-        $hasFailure = array_reduce($report, static function(bool $carry, array $result): bool {
+        $hasFailure = array_reduce($report, static function (bool $carry, array $result): bool {
             return $carry || !$result['ok'];
         }, false);
 

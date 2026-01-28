@@ -6,11 +6,11 @@ if (!function_exists('env')) {
     function env(string $key, mixed $default = null): mixed
     {
         $value = $_ENV[$key] ?? $_SERVER[$key] ?? getenv($key);
-        
+
         if ($value === false) {
             return $default;
         }
-        
+
         return match (strtolower($value)) {
             'true', '(true)' => true,
             'false', '(false)' => false,
@@ -29,8 +29,8 @@ if (!function_exists('config')) {
         if ($repository === null) {
             if (\VelvetCMS\Core\Application::hasInstance()) {
                 $app = \VelvetCMS\Core\Application::getInstance();
-                $repository = $app->has('config') 
-                    ? $app->make('config') 
+                $repository = $app->has('config')
+                    ? $app->make('config')
                     : \VelvetCMS\Core\ConfigRepository::getInstance();
             } else {
                 $repository = \VelvetCMS\Core\ConfigRepository::getInstance();
@@ -133,7 +133,7 @@ if (!function_exists('app')) {
     function app(?string $abstract = null, array $parameters = []): mixed
     {
         $app = \VelvetCMS\Core\Application::getInstance();
-        
+
         return $abstract === null ? $app : $app->make($abstract);
     }
 }
@@ -167,11 +167,11 @@ if (!function_exists('session')) {
     function session(?string $key = null, mixed $default = null): mixed
     {
         $manager = app('session');
-        
+
         if ($key === null) {
             return $manager;
         }
-        
+
         return $manager->get($key, $default);
     }
 }
@@ -203,7 +203,7 @@ if (!function_exists('base_path')) {
     {
         static $basePath = null;
         $basePath ??= dirname(__DIR__, 2);
-        
+
         return $path ? $basePath . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $basePath;
     }
 }
@@ -348,14 +348,14 @@ if (!function_exists('array_get')) {
         if (array_key_exists($key, $array)) {
             return $array[$key];
         }
-        
+
         foreach (explode('.', $key) as $segment) {
             if (!is_array($array) || !array_key_exists($segment, $array)) {
                 return $default;
             }
             $array = $array[$segment];
         }
-        
+
         return $array;
     }
 }
@@ -415,7 +415,7 @@ if (!function_exists('split_command_args')) {
             return [];
         }
 
-        $pattern = '/"([^"\\]*(?:\\.[^"\\]*)*)"|\'([^\'\\]*(?:\\.[^\'\\]*)*)\'|(\S+)/';
+        $pattern = '/"([^"\\\\]*(?:\\\\.[^"\\\\]*)*)"|\'([^\'\\\\]*(?:\\\\.[^\'\\\\]*)*)\'|(\\S+)/';
         preg_match_all($pattern, $command, $matches, PREG_SET_ORDER);
 
         $args = [];

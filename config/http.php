@@ -15,7 +15,7 @@ return [
             'csrf' => \VelvetCMS\Http\Middleware\VerifyCsrfToken::class,
             'session' => \VelvetCMS\Http\Middleware\StartSessionMiddleware::class,
         ],
-        
+
         /** Global middleware stack */
         'global' => [
             'errors',
@@ -23,7 +23,7 @@ return [
             'throttle',
         ],
     ],
-    
+
     /** Rate limiting */
     'rate_limit' => [
         'enabled' => true,

@@ -15,18 +15,18 @@ class VersionCommand extends Command
     {
         return 'version';
     }
-    
+
     public function description(): string
     {
         return 'Display VelvetCMS Core version';
     }
-    
+
     public function handle(): int
     {
         $registry = \VelvetCMS\Core\VersionRegistry::instance();
         $coreVersion = $registry->getVersion('core');
         $stability = $registry->getStability('core');
-        
+
         $this->line("\033[1mVelvetCMS Core\033[0m \033[33m{$coreVersion}\033[0m");
         $this->line();
 
@@ -42,7 +42,7 @@ class VersionCommand extends Command
         $modules = $registry->getModules();
         if (!empty($modules)) {
             $this->line();
-            $this->line("Modules:");
+            $this->line('Modules:');
             foreach ($modules as $name => $meta) {
                 $moduleVersion = $meta['version'] ?? 'unknown';
                 $stability = $meta['stability'] ?? 'unknown';
@@ -56,14 +56,14 @@ class VersionCommand extends Command
                 $this->line($summary);
             }
         }
-        
+
         if (str_contains(strtolower($stability), 'dev')) {
             $this->line();
             $this->warning('This is a development version');
         }
-        
+
         $this->line();
-        
+
         return 0;
     }
 }

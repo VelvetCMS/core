@@ -83,7 +83,7 @@ class Pipeline
     private function wrap(object $instance): callable
     {
         if ($instance instanceof MiddlewareInterface) {
-            return fn(Request $request, callable $next): Response => $instance->handle($request, $next);
+            return fn (Request $request, callable $next): Response => $instance->handle($request, $next);
         }
 
         if (is_callable($instance)) {

@@ -32,7 +32,7 @@ final class ApplicationContainerTest extends TestCase
 
     public function test_singleton_returns_same_instance(): void
     {
-        $this->app->singleton('unique', fn() => new \stdClass());
+        $this->app->singleton('unique', fn () => new \stdClass());
 
         $first = $this->app->get('unique');
         $second = $this->app->get('unique');
@@ -52,7 +52,7 @@ final class ApplicationContainerTest extends TestCase
 
     public function test_has_returns_true_for_registered_service(): void
     {
-        $this->app->bind('exists', fn() => 'yes');
+        $this->app->bind('exists', fn () => 'yes');
 
         $this->assertTrue($this->app->has('exists'));
         $this->assertFalse($this->app->has('nope'));
@@ -60,7 +60,7 @@ final class ApplicationContainerTest extends TestCase
 
     public function test_alias_resolves_to_original(): void
     {
-        $this->app->singleton('original.service', fn() => 'the value');
+        $this->app->singleton('original.service', fn () => 'the value');
         $this->app->alias('original.service', 'short');
 
         $this->assertSame('the value', $this->app->get('short'));
@@ -68,7 +68,7 @@ final class ApplicationContainerTest extends TestCase
 
     public function test_magic_get_returns_service(): void
     {
-        $this->app->bind('magic', fn() => 'abracadabra');
+        $this->app->bind('magic', fn () => 'abracadabra');
 
         $this->assertSame('abracadabra', $this->app->magic);
     }
@@ -193,17 +193,23 @@ class SimpleDependency
 
 class ServiceWithDependency
 {
-    public function __construct(public SimpleDependency $dep) {}
+    public function __construct(public SimpleDependency $dep)
+    {
+    }
 }
 
 class ServiceWithDefault
 {
-    public function __construct(public string $value = 'default-value') {}
+    public function __construct(public string $value = 'default-value')
+    {
+    }
 }
 
 class UnresolvableService
 {
-    public function __construct(public string $required) {}
+    public function __construct(public string $required)
+    {
+    }
 }
 
 class TestServiceProvider extends ServiceProvider
@@ -223,7 +229,9 @@ class BootCounterProvider extends ServiceProvider
 {
     public static int $bootCount = 0;
 
-    public function register(): void {}
+    public function register(): void
+    {
+    }
 
     public function boot(): void
     {

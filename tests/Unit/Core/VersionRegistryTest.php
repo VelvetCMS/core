@@ -12,12 +12,12 @@ final class VersionRegistryTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Reset singleton for each test
         $reflection = new \ReflectionClass(VersionRegistry::class);
         $instanceProp = $reflection->getProperty('instance');
         $instanceProp->setValue(null, null);
-        
+
         // Set up test version config
         config(['version' => [
             'core' => [
@@ -201,7 +201,7 @@ final class VersionRegistryTest extends TestCase
                 'no-deps' => ['version' => '1.0.0'],
             ],
         ]]);
-        
+
         $reflection = new \ReflectionClass(VersionRegistry::class);
         $instanceProp = $reflection->getProperty('instance');
         $instanceProp->setValue(null, null);

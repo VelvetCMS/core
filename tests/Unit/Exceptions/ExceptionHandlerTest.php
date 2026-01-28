@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Exceptions;
 
 use Psr\Log\NullLogger;
+use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Exceptions\Handler;
 use VelvetCMS\Exceptions\HttpException;
-use VelvetCMS\Core\EventDispatcher;
-use VelvetCMS\Http\Request;
-use VelvetCMS\Http\Response;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ExceptionHandlerTest extends TestCase

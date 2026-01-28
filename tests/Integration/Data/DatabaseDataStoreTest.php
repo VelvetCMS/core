@@ -20,9 +20,9 @@ final class DatabaseDataStoreTest extends TestCase
 
         $dbPath = $this->tmpDir . '/data.sqlite';
         $pdo = new PDO('sqlite:' . $dbPath);
-        
+
         // Create data_store table
-        $pdo->exec("
+        $pdo->exec('
             CREATE TABLE data_store (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 collection VARCHAR(255) NOT NULL,
@@ -32,7 +32,7 @@ final class DatabaseDataStoreTest extends TestCase
                 updated_at DATETIME,
                 UNIQUE(collection, key)
             )
-        ");
+        ');
 
         $this->db = new Connection([
             'default' => 'sqlite',
@@ -53,7 +53,7 @@ final class DatabaseDataStoreTest extends TestCase
         $this->store->put('metrics', 'daily', $data);
 
         $retrieved = $this->store->get('metrics', 'daily');
-        
+
         // DB store adds metadata keys
         $this->assertSame('DB Test', $retrieved['name']);
         $this->assertSame(42, $retrieved['count']);
@@ -68,7 +68,7 @@ final class DatabaseDataStoreTest extends TestCase
 
         $data = $this->store->get('config', 'app');
         $this->assertFalse($data['debug']);
-        
+
         // Verify only one record exists
         $count = $this->db->table('data_store')->count();
         $this->assertSame(1, $count);
@@ -78,7 +78,7 @@ final class DatabaseDataStoreTest extends TestCase
     {
         $this->store->put('temp', 'foo', ['bar' => 'baz']);
         $this->assertTrue($this->store->forget('temp', 'foo'));
-        
+
         $this->assertNull($this->store->get('temp', 'foo'));
         $this->assertFalse($this->store->forget('temp', 'foo'));
     }

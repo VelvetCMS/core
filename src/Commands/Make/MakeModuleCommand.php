@@ -24,17 +24,17 @@ class MakeModuleCommand extends GeneratorCommand
     public function handle(): int
     {
         $name = $this->argument(0);
-        
+
         if (!$name) {
-            $this->error("Module name is required.");
+            $this->error('Module name is required.');
             return 1;
         }
 
         $moduleName = $name;
         $className = $this->formatClassName($name);
-        
+
         $basePath = base_path("user/modules/{$moduleName}");
-        
+
         if (is_dir($basePath)) {
             $this->error("Module '{$moduleName}' already exists.");
             return 1;
@@ -55,13 +55,13 @@ class MakeModuleCommand extends GeneratorCommand
             ],
             'autoload' => [
                 'psr-4' => [
-                    "{$className}\\" => "src/"
+                    "{$className}\\" => 'src/'
                 ]
             ]
         ];
-        
+
         file_put_contents(
-            "{$basePath}/module.json", 
+            "{$basePath}/module.json",
             json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
 
@@ -90,18 +90,18 @@ PHP;
         $content = $this->replacePlaceholders($stub, [
             '{{ namespace }}' => $className,
         ]);
-        
+
         file_put_contents("{$basePath}/src/Module.php", $content);
 
         $composer = [
-            'name' => "velvet-modules/" . strtolower($moduleName),
+            'name' => 'velvet-modules/' . strtolower($moduleName),
             'description' => $manifest['description'],
             'type' => 'velvetcms-module',
             'autoload' => $manifest['autoload']
         ];
 
         file_put_contents(
-            "{$basePath}/composer.json", 
+            "{$basePath}/composer.json",
             json_encode($composer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
         );
 

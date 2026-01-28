@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
-use VelvetCMS\Core\ModuleManager;
 use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ModuleManager;
 
 class ListModuleCommand extends Command
 {
@@ -17,7 +17,8 @@ class ListModuleCommand extends Command
 
     public function __construct(
         private readonly Application $app
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {
@@ -56,8 +57,8 @@ class ListModuleCommand extends Command
         }
 
         $this->line("\033[1mModules\033[0m");
-        $this->line(sprintf("  %-20s %-15s %-15s %s", "Name", "Version", "Status", "Path"));
-        $this->line("  " . str_repeat('-', 80));
+        $this->line(sprintf('  %-20s %-15s %-15s %s', 'Name', 'Version', 'Status', 'Path'));
+        $this->line('  ' . str_repeat('-', 80));
 
         foreach ($discovered as $name => $manifest) {
             $version = $manifest['version'] ?? 'unknown';
@@ -79,9 +80,10 @@ class ListModuleCommand extends Command
                 $path = '.' . substr($path, strlen($this->app->basePath()));
             }
 
-            $this->line(sprintf("  %-20s %-15s %-25s %s", 
-                $name, 
-                $version, 
+            $this->line(sprintf(
+                '  %-20s %-15s %-25s %s',
+                $name,
+                $version,
                 $status,
                 "\033[90m{$path}\033[0m"
             ));

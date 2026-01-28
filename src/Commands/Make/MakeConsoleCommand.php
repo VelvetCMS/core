@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Commands\Make;
 
-use VelvetCMS\Commands\Command;
-
 class MakeConsoleCommand extends GeneratorCommand
 {
     public function signature(): string

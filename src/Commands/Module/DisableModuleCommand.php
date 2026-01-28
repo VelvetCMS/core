@@ -17,8 +17,8 @@ class DisableModuleCommand extends Command
 
     public function __construct(
         private readonly Application $app,
-        private readonly ModuleManager $moduleManager
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {
@@ -62,7 +62,7 @@ class DisableModuleCommand extends Command
             file_put_contents($statePath, json_encode($state, JSON_PRETTY_PRINT));
 
             $this->line("\033[32m✓\033[0m Disabled module: {$moduleName}");
-            $this->line("");
+            $this->line('');
 
             $compiler = new CompileModuleCommand($this->app);
             return $compiler->handle();

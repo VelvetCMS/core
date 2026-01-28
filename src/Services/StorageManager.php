@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Services;
 
+use InvalidArgumentException;
 use VelvetCMS\Contracts\FilesystemInterface;
 use VelvetCMS\Drivers\Storage\LocalDriver;
-use InvalidArgumentException;
 
 class StorageManager
 {

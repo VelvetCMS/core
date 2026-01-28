@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands;
 
 use VelvetCMS\Core\Application;
-use VelvetCMS\Drivers\Content\FileDriver;
-use VelvetCMS\Drivers\Content\DBDriver;
-use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Database\Connection;
+use VelvetCMS\Drivers\Content\DBDriver;
+use VelvetCMS\Drivers\Content\FileDriver;
+use VelvetCMS\Services\ContentParser;
 
 class ImportContentCommand extends Command
 {
     public function __construct(
         private readonly Application $app
-    ) {}
+    ) {
+    }
 
     public static function category(): string
     {
@@ -44,25 +45,25 @@ class ImportContentCommand extends Command
 
         try {
             $pages = $fileDriver->list([]);
-            
+
             $count = 0;
             foreach ($pages as $page) {
                 $this->line("Importing: {$page->title} ({$page->slug})");
-                
+
                 if ($dbDriver->exists($page->slug)) {
-                    $this->warning("  - Skipped (Already exists)");
+                    $this->warning('  - Skipped (Already exists)');
                     continue;
                 }
-                
+
                 $dbDriver->save($page);
                 $count++;
             }
-            
+
             $this->success("Successfully imported {$count} pages.");
             return 0;
-            
+
         } catch (\Exception $e) {
-            $this->error("Import failed: " . $e->getMessage());
+            $this->error('Import failed: ' . $e->getMessage());
             return 1;
         }
     }

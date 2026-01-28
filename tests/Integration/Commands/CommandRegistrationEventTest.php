@@ -22,7 +22,7 @@ final class CommandRegistrationEventTest extends TestCase
         $events = $app->make('events');
 
         $received = null;
-        $events->listen('commands.registering', function(CommandRegistry $commands) use (&$received): void {
+        $events->listen('commands.registering', function (CommandRegistry $commands) use (&$received): void {
             $received = $commands;
             $commands->register('demo:test', DemoCommand::class);
         });

@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Http;
 
 use VelvetCMS\Exceptions\ValidationException;
-use VelvetCMS\Http\Request;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class RequestValidationTest extends TestCase

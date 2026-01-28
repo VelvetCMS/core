@@ -7,6 +7,7 @@ namespace VelvetCMS\Core;
 use Composer\Semver\Comparator;
 use Composer\Semver\Semver;
 use Composer\Semver\VersionParser;
+
 final class VersionRegistry
 {
     private static ?self $instance = null;
@@ -74,7 +75,7 @@ final class VersionRegistry
                 'provides' => $module['provides'] ?? [],
                 'description' => $module['description'] ?? null,
                 'source' => $module['source'] ?? null,
-            ], static fn($value) => $value !== null && $value !== []);
+            ], static fn ($value) => $value !== null && $value !== []);
         }
 
         return $modules;
@@ -156,7 +157,7 @@ final class VersionRegistry
     {
         $issues = [];
         $moduleMeta = $this->getComponent($module);
-        
+
         if (empty($moduleMeta)) {
             $issues[] = "Module '{$module}' not found";
             return $issues;
@@ -170,7 +171,7 @@ final class VersionRegistry
                 }
             } elseif ($dependency === 'php') {
                 if (!$this->satisfies(PHP_VERSION, $constraint)) {
-                    $issues[] = "PHP version " . PHP_VERSION . " does not satisfy requirement {$constraint}";
+                    $issues[] = 'PHP version ' . PHP_VERSION . " does not satisfy requirement {$constraint}";
                 }
             } else {
                 if (!$this->hasModule($dependency)) {

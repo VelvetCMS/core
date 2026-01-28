@@ -34,7 +34,7 @@ abstract class GeneratorCommand extends Command
         $base = 'src/';
         $relative = str_replace('VelvetCMS\\', '', $namespace);
         $relative = str_replace('\\', '/', $relative);
-        
+
         return base_path("{$base}{$relative}/{$className}.php");
     }
 
@@ -42,7 +42,7 @@ abstract class GeneratorCommand extends Command
     {
         $className = $this->formatClassName($name);
         $path = $this->getPath($namespace, $className);
-        
+
         if (file_exists($path)) {
             $this->error("File '{$className}' already exists.");
             return 1;
@@ -55,13 +55,13 @@ abstract class GeneratorCommand extends Command
         ]);
 
         $this->ensureDirectoryExists($path);
-        
+
         if (file_put_contents($path, $content)) {
             $this->success("Created [{$path}]");
             return 0;
         }
 
-        $this->error("Failed to create file.");
+        $this->error('Failed to create file.');
         return 1;
     }
 }

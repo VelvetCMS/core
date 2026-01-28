@@ -21,7 +21,7 @@ class MySqlGrammar extends Grammar
             }
 
             $cols = $this->columnize($command['columns']);
-            
+
             if ($command['type'] === 'primary') {
                 $columns[] = "PRIMARY KEY ({$cols})";
             } elseif ($command['type'] === 'unique') {
@@ -35,23 +35,27 @@ class MySqlGrammar extends Grammar
             if (!$command instanceof ForeignKeyDefinition) {
                 continue;
             }
-            
+
             $cols = $this->columnize($command->columns);
             $onTable = $this->wrap($command->onTable);
             $refs = $this->columnize($command->references);
-            
+
             $sql = "FOREIGN KEY ({$cols}) REFERENCES {$onTable} ({$refs})";
-            
-            if ($command->onDelete) $sql .= " ON DELETE {$command->onDelete}";
-            if ($command->onUpdate) $sql .= " ON UPDATE {$command->onUpdate}";
-            
+
+            if ($command->onDelete) {
+                $sql .= " ON DELETE {$command->onDelete}";
+            }
+            if ($command->onUpdate) {
+                $sql .= " ON UPDATE {$command->onUpdate}";
+            }
+
             $columns[] = $sql;
         }
 
         $sql = 'CREATE TABLE ' . $this->wrap($blueprint->getTable()) . ' (' . implode(', ', $columns) . ')';
-        
+
         $sql .= ' ENGINE = InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
-        
+
         return $sql;
     }
 

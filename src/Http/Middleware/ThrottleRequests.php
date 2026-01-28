@@ -15,7 +15,8 @@ class ThrottleRequests implements MiddlewareInterface
 
     public function __construct(
         private readonly RateLimiter $rateLimiter
-    ) {}
+    ) {
+    }
 
     public function setLimiter(string $limiter): self
     {

@@ -11,7 +11,8 @@ class Limit
         public int $decaySeconds = 60,
         public ?string $key = null,
         public ?string $by = 'ip'
-    ) {}
+    ) {
+    }
 
     public static function perMinute(int $maxAttempts): self
     {

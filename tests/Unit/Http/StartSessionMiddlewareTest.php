@@ -15,7 +15,7 @@ final class StartSessionMiddlewareTest extends TestCase
         $middleware = new StartSessionMiddleware();
         $request = $this->makeRequest('GET', '/');
 
-        $response = $middleware->handle($request, fn() => Response::html('ok'));
+        $response = $middleware->handle($request, fn () => Response::html('ok'));
 
         $this->assertSame(200, $response->getStatus());
         $this->assertSame('ok', $response->getContent());

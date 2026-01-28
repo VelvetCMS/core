@@ -27,7 +27,7 @@ class PublishCommand extends Command
     {
         $file = $this->argument(0);
         if (!$file) {
-            $this->info("Usage: velvet config:publish <file>");
+            $this->info('Usage: velvet config:publish <file>');
             return 1;
         }
 

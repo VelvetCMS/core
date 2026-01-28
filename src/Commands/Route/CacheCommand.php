@@ -11,7 +11,8 @@ class CacheCommand extends Command
 {
     public function __construct(
         private readonly Application $app
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {

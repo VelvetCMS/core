@@ -10,7 +10,8 @@ final class RouteMatch
     public function __construct(
         private Route $route,
         private array $params
-    ) {}
+    ) {
+    }
 
     public function route(): Route
     {

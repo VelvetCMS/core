@@ -14,7 +14,7 @@ final class TaskTest extends TestCase
 
     public function test_wildcard_always_matches(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $task->everyMinute(); // * * * * *
 
         $this->assertTrue($task->isDue());
@@ -130,7 +130,7 @@ final class TaskTest extends TestCase
 
     public function test_every_minute_sets_correct_expression(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $task->everyMinute();
 
         // Every minute should always be due
@@ -139,7 +139,7 @@ final class TaskTest extends TestCase
 
     public function test_hourly_sets_correct_expression(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $task->hourly();
 
         // Hourly = 0 * * * * (minute 0 of every hour)
@@ -149,7 +149,7 @@ final class TaskTest extends TestCase
 
     public function test_daily_sets_correct_expression(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $task->daily();
 
         // Daily = 0 0 * * * (midnight)
@@ -160,7 +160,7 @@ final class TaskTest extends TestCase
 
     public function test_daily_at_sets_correct_time(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $hour = (int) date('H');
         $minute = (int) date('i');
         $task->dailyAt($hour, $minute);
@@ -170,7 +170,7 @@ final class TaskTest extends TestCase
 
     public function test_daily_at_with_different_time(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $wrongHour = ((int) date('H') + 1) % 24;
         $task->dailyAt($wrongHour, 30);
 
@@ -189,7 +189,7 @@ final class TaskTest extends TestCase
 
     public function test_callback_task_has_null_command(): void
     {
-        $task = new Task(fn() => 'result');
+        $task = new Task(fn () => 'result');
 
         $this->assertNull($task->getCommand());
     }
@@ -227,7 +227,7 @@ final class TaskTest extends TestCase
 
     public function test_frequency_methods_return_self(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
 
         $this->assertSame($task, $task->everyMinute());
         $this->assertSame($task, $task->hourly());
@@ -286,7 +286,7 @@ final class TaskTest extends TestCase
      */
     private function createTaskWithExpression(string $expression): Task
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         // Use reflection to set the expression directly
         $ref = new \ReflectionClass($task);
         $prop = $ref->getProperty('expression');

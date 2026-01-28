@@ -11,31 +11,31 @@ class Connection
 {
     private ?PDO $pdo = null;
     private array $config;
-    
+
     public function __construct(array $config)
     {
         $this->config = $config;
     }
-    
+
     public function table(string $table): QueryBuilder
     {
         return (new QueryBuilder($this))->table($table);
     }
-    
+
     public function getPdo(): PDO
     {
         if ($this->pdo === null) {
             $this->connect();
         }
-        
+
         return $this->pdo;
     }
-    
+
     private function connect(): void
     {
         $connection = $this->config['connections'][$this->config['default']];
         $driver = $connection['driver'];
-        
+
         try {
             $this->pdo = match ($driver) {
                 'sqlite' => $this->connectSqlite($connection),
@@ -43,16 +43,16 @@ class Connection
                 'pgsql' => $this->connectPgsql($connection),
                 default => throw new \RuntimeException("Unsupported driver: {$driver}")
             };
-            
+
             $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
             $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
             $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-            
+
         } catch (PDOException $e) {
             throw new \RuntimeException("Database connection failed: {$e->getMessage()}");
         }
     }
-    
+
     /**
      * Connect to SQLite
      */
@@ -60,14 +60,14 @@ class Connection
     {
         $database = $config['database'];
         $dir = dirname($database);
-        
+
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
-        
+
         return new PDO("sqlite:{$database}");
     }
-    
+
     /**
      * Connect to MySQL
      */
@@ -80,7 +80,7 @@ class Connection
             $config['database'],
             $config['charset'] ?? 'utf8mb4'
         );
-        
+
         return new PDO(
             $dsn,
             $config['username'],
@@ -91,7 +91,7 @@ class Connection
             ]
         );
     }
-    
+
     /**
      * Connect to PostgreSQL
      */
@@ -103,14 +103,14 @@ class Connection
             $config['port'],
             $config['database']
         );
-        
+
         return new PDO(
             $dsn,
             $config['username'],
             $config['password']
         );
     }
-    
+
     /**
      * Execute raw query
      */
@@ -120,7 +120,7 @@ class Connection
         $statement->execute($bindings);
         return $statement->fetchAll();
     }
-    
+
     /**
      * Execute statement (INSERT, UPDATE, DELETE)
      */
@@ -130,7 +130,7 @@ class Connection
         $statement->execute($bindings);
         return $statement->rowCount();
     }
-    
+
     /**
      * Check if table exists
      */
@@ -138,16 +138,16 @@ class Connection
     {
         try {
             $driver = $this->getPdo()->getAttribute(PDO::ATTR_DRIVER_NAME);
-            
+
             $sql = match ($driver) {
                 'sqlite' => "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
-                'mysql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?",
+                'mysql' => 'SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = ?',
                 'pgsql' => "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?",
                 default => throw new \RuntimeException("Unsupported driver: {$driver}")
             };
-            
+
             $result = $this->query($sql, [$table]);
-            
+
             return count($result) > 0;
         } catch (\Exception) {
             return false;
@@ -169,7 +169,7 @@ class Connection
     {
         return $this->getPdo()->lastInsertId();
     }
-    
+
     /**
      * Begin transaction
      */
@@ -177,7 +177,7 @@ class Connection
     {
         return $this->getPdo()->beginTransaction();
     }
-    
+
     /**
      * Commit transaction
      */
@@ -185,7 +185,7 @@ class Connection
     {
         return $this->getPdo()->commit();
     }
-    
+
     /**
      * Rollback transaction
      */
@@ -193,14 +193,14 @@ class Connection
     {
         return $this->getPdo()->rollBack();
     }
-    
+
     /**
      * Execute callback in transaction
      */
     public function transaction(callable $callback): mixed
     {
         $this->beginTransaction();
-        
+
         try {
             $result = $callback($this);
             $this->commit();

@@ -7,8 +7,8 @@ namespace VelvetCMS\Database\Schema;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\Schema\Grammars\Grammar;
 use VelvetCMS\Database\Schema\Grammars\MySqlGrammar;
-use VelvetCMS\Database\Schema\Grammars\SQLiteGrammar;
 use VelvetCMS\Database\Schema\Grammars\PostgresGrammar;
+use VelvetCMS\Database\Schema\Grammars\SQLiteGrammar;
 
 class Schema
 {
@@ -34,7 +34,7 @@ class Schema
     {
         $blueprint = new Blueprint($table);
         $blueprint->drop();
-        
+
         self::execute($blueprint);
     }
 

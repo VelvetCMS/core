@@ -22,12 +22,13 @@ class ScheduleRunCommand extends Command
     public function __construct(
         private readonly Application $app,
         private readonly Schedule $schedule
-    ) {}
+    ) {
+    }
 
     public function handle(): int
     {
         $tasks = $this->schedule->getDueTasks();
-        
+
         if (empty($tasks)) {
             $this->info('No tasks are due right now.');
             return 0;
@@ -50,9 +51,9 @@ class ScheduleRunCommand extends Command
 
             $command = build_cli_command_prefix($prefix, $cmd);
             passthru($command);
-            
+
         } else {
-            $this->info("Running callback task...");
+            $this->info('Running callback task...');
             $task->run($this->app);
         }
     }

@@ -16,7 +16,7 @@ final class BaseModuleTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->modulePath = $this->tmpDir . '/modules/test-module';
         $this->mkdir($this->modulePath);
     }
@@ -66,7 +66,7 @@ final class BaseModuleTest extends TestCase
             description: null,
         );
         $module = new TestModule($this->modulePath, $manifest);
-        
+
         $this->assertSame('', $module->description());
     }
 
@@ -97,7 +97,7 @@ final class BaseModuleTest extends TestCase
             'entry' => TestModule::class,
         ]);
         $module = new TestModule($this->modulePath . '/', $manifest);
-        
+
         // Should not double slashes
         $this->assertStringNotContainsString('//', $module->path('src'));
     }
@@ -188,9 +188,9 @@ final class BaseModuleTest extends TestCase
     {
         $module = $this->createModule();
         $app = new Application($this->tmpDir);
-        
+
         $module->register($app);
-        
+
         $this->assertTrue($module->registerCalled);
     }
 
@@ -198,9 +198,9 @@ final class BaseModuleTest extends TestCase
     {
         $module = $this->createModule();
         $app = new Application($this->tmpDir);
-        
+
         $module->boot($app);
-        
+
         $this->assertTrue($module->bootCalled);
     }
 
@@ -230,10 +230,10 @@ final class BaseModuleTest extends TestCase
     public function test_merge_config_from_handles_missing_file(): void
     {
         $module = $this->createModule();
-        
+
         // Should not throw
         $module->testMergeConfigFrom('/nonexistent/config.php', 'test');
-        
+
         $this->assertTrue(true);
     }
 
@@ -244,10 +244,10 @@ final class BaseModuleTest extends TestCase
         file_put_contents($configPath, '<?php return "not an array";');
 
         $module = $this->createModule();
-        
+
         // Should not throw
         $module->testMergeConfigFrom($configPath, 'test');
-        
+
         $this->assertTrue(true);
     }
 
@@ -283,10 +283,10 @@ final class BaseModuleTest extends TestCase
         Application::setInstance($app);
 
         $module = $this->createModule();
-        
+
         // Should not throw
         $module->testLoadViewsFrom('/nonexistent/views', 'test');
-        
+
         $this->assertTrue(true);
         Application::clearInstance();
     }

@@ -19,7 +19,7 @@ final class ErrorHandlingMiddlewareTest extends TestCase
         $middleware = new ErrorHandlingMiddleware($handler);
         $request = $this->makeRequest('GET', '/');
 
-        $response = $middleware->handle($request, fn(Request $req) => Response::html('ok'));
+        $response = $middleware->handle($request, fn (Request $req) => Response::html('ok'));
 
         $this->assertSame('ok', $response->getContent());
         $this->assertSame(200, $response->getStatus());

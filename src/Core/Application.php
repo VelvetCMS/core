@@ -8,6 +8,8 @@ class Application
 {
     private static ?Application $instance = null;
 
+    public EventDispatcher $events;
+
     private array $services = [];
     private array $instances = [];
     private array $aliases = [];
@@ -15,14 +17,15 @@ class Application
     private array $providers = [];
     private bool $booted = false;
     private string $basePath;
-    
+
     public function __construct(string $basePath)
     {
         $this->basePath = $basePath;
-        
+        $this->events = new EventDispatcher();
+
         $this->instance(self::class, $this);
         $this->instance(Application::class, $this);
-        
+
         $this->register(CoreServiceProvider::class);
     }
 
@@ -76,7 +79,7 @@ class Application
         }
 
         date_default_timezone_set(config('app.timezone', 'UTC'));
-        
+
         $this->events->dispatch('app.booting', $this);
 
         foreach ($this->providers as $provider) {
@@ -84,19 +87,19 @@ class Application
                 $provider->boot();
             }
         }
-        
+
         $this->events->dispatch('app.booted', $this);
         $this->booted = true;
     }
-    
+
     public function bind(string $name, callable $factory): void
     {
         $this->services[$name] = $factory;
     }
-    
+
     public function singleton(string $name, callable $factory): void
     {
-        $this->services[$name] = function() use ($name, $factory) {
+        $this->services[$name] = function () use ($name, $factory) {
             if (!array_key_exists($name, $this->instances)) {
                 $this->instances[$name] = $factory();
             }
@@ -104,7 +107,7 @@ class Application
             return $this->instances[$name];
         };
     }
-    
+
     public function get(string $name): mixed
     {
         $key = $this->resolveAlias($name);
@@ -115,7 +118,7 @@ class Application
 
         return $this->services[$key]();
     }
-    
+
     public function has(string $name): bool
     {
         $key = $this->resolveAlias($name);
@@ -127,7 +130,7 @@ class Application
     {
         return $this->aliases[$name] ?? $name;
     }
-    
+
     public function __get(string $name): mixed
     {
         return $this->get($name);
@@ -141,7 +144,7 @@ class Application
     public function instance(string $name, mixed $instance): void
     {
         $this->instances[$name] = $instance;
-        $this->services[$name] = fn() => $this->instances[$name];
+        $this->services[$name] = fn () => $this->instances[$name];
     }
 
     public function make(string $name): mixed
@@ -150,26 +153,26 @@ class Application
         if ($this->has($name)) {
             return $this->get($name);
         }
-        
+
         if (class_exists($name)) {
             return $this->autowire($name);
         }
-        
+
         throw new \RuntimeException("Service not found: {$name}");
     }
-    
+
     private function autowire(string $className): object
     {
         if (!isset($this->reflectionCache[$className])) {
             $this->reflectionCache[$className] = $this->buildReflectionCache($className);
         }
-        
+
         $cached = $this->reflectionCache[$className];
-        
+
         if ($cached['constructor'] === null) {
             return new $className();
         }
-        
+
         $dependencies = [];
         foreach ($cached['dependencies'] as $dep) {
             if ($dep['type'] === 'class') {
@@ -178,32 +181,32 @@ class Application
                 $dependencies[] = $dep['value'];
             }
         }
-        
+
         return new $className(...$dependencies);
     }
-    
+
     private function buildReflectionCache(string $className): array
     {
         $reflection = new \ReflectionClass($className);
-        
+
         if (!$reflection->isInstantiable()) {
             throw new \RuntimeException("Class {$className} is not instantiable");
         }
-        
+
         $constructor = $reflection->getConstructor();
-        
+
         if ($constructor === null) {
             return [
                 'constructor' => null,
                 'dependencies' => [],
             ];
         }
-        
+
         $dependencies = [];
-        
+
         foreach ($constructor->getParameters() as $parameter) {
             $type = $parameter->getType();
-            
+
             if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
                 $dependencies[] = ['type' => 'class', 'value' => $type->getName()];
             } elseif ($parameter->isDefaultValueAvailable()) {
@@ -216,23 +219,23 @@ class Application
                 );
             }
         }
-        
+
         return [
             'constructor' => true,
             'dependencies' => $dependencies,
         ];
     }
-    
+
     public function basePath(string $path = ''): string
     {
         return $this->basePath . ($path ? DIRECTORY_SEPARATOR . $path : '');
     }
-    
+
     public function environment(): string
     {
         return (string) config('app.env', 'production');
     }
-    
+
     public function isDebug(): bool
     {
         return (bool) config('app.debug', false);
@@ -243,7 +246,7 @@ class Application
         $pages = $this->make('pages');
         $view = $this->make('view');
 
-        $router->get('/', function(\VelvetCMS\Http\Request $request) use ($pages, $view) {
+        $router->get('/', function (\VelvetCMS\Http\Request $request) use ($pages, $view) {
             try {
                 $page = $pages->load('welcome');
                 $layout = 'layouts/' . ($page->layout ?? 'default');
@@ -256,14 +259,14 @@ class Application
             }
         });
 
-        $router->get('/{slug*}', function(\VelvetCMS\Http\Request $request, string $slug) use ($pages, $view) {
+        $router->get('/{slug*}', function (\VelvetCMS\Http\Request $request, string $slug) use ($pages, $view) {
             try {
                 $page = $pages->load($slug);
-                
+
                 if (!$page->isPublished() && !config('app.debug', false)) {
                     return \VelvetCMS\Http\Response::notFound('Page not found');
                 }
-                
+
                 $layout = 'layouts/' . ($page->layout ?? 'default');
                 return \VelvetCMS\Http\Response::html($view->render($layout, [
                     'page' => $page,
@@ -275,4 +278,3 @@ class Application
         });
     }
 }
-

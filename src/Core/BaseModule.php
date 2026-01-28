@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Core;
 
 use VelvetCMS\Contracts\Module;
+
 abstract class BaseModule implements Module
 {
     protected string $basePath;
@@ -23,7 +24,7 @@ abstract class BaseModule implements Module
     {
         $default = $this->path('database/migrations');
         $paths = is_dir($default) ? [$default] : [];
-        
+
         return array_merge($paths, $this->migrationPaths);
     }
 
@@ -77,16 +78,20 @@ abstract class BaseModule implements Module
         return $default;
     }
 
-    public function register(Application $app): void {}
+    public function register(Application $app): void
+    {
+    }
 
-    public function boot(Application $app): void {}
+    public function boot(Application $app): void
+    {
+    }
 
     protected function mergeConfigFrom(string $path, string $key): void
     {
         if (!file_exists($path)) {
             return;
         }
-        
+
         $moduleConfig = require $path;
         if (!is_array($moduleConfig)) {
             return;
@@ -94,7 +99,7 @@ abstract class BaseModule implements Module
 
         $currentConfig = config($key, []);
         $merged = array_replace_recursive($moduleConfig, $currentConfig);
-        
+
         config([$key => $merged]);
     }
 
@@ -113,14 +118,12 @@ abstract class BaseModule implements Module
         if (!is_dir($path)) {
             return;
         }
-        
+
         app('view')->namespace($namespace, $path);
     }
 
     protected function loadMigrationsFrom(string $path): void
     {
-        if (property_exists($this, 'migrationPaths')) {
-            $this->migrationPaths[] = $path;
-        }
+        $this->migrationPaths[] = $path;
     }
 }

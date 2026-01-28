@@ -17,12 +17,12 @@ final class ViewEngineTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->viewDir = $this->tmpDir . '/views';
         $this->cacheDir = $this->tmpDir . '/cache/views';
         $this->mkdir($this->viewDir);
         $this->mkdir($this->cacheDir);
-        
+
         $this->engine = new ViewEngine($this->viewDir, $this->cacheDir);
     }
 
@@ -152,8 +152,10 @@ final class ViewEngineTest extends TestCase
 
     public function test_elseif_directive(): void
     {
-        file_put_contents($this->viewDir . '/elseif.velvet.php', 
-            '@if($val === 1)One@elseif($val === 2)Two@else Other@endif');
+        file_put_contents(
+            $this->viewDir . '/elseif.velvet.php',
+            '@if($val === 1)One@elseif($val === 2)Two@else Other@endif'
+        );
 
         $this->assertSame('One', $this->engine->render('elseif', ['val' => 1]));
         $this->assertSame('Two', $this->engine->render('elseif', ['val' => 2]));
@@ -162,8 +164,10 @@ final class ViewEngineTest extends TestCase
 
     public function test_foreach_directive(): void
     {
-        file_put_contents($this->viewDir . '/foreach.velvet.php', 
-            '@foreach($items as $item){{ $item }}@endforeach');
+        file_put_contents(
+            $this->viewDir . '/foreach.velvet.php',
+            '@foreach($items as $item){{ $item }}@endforeach'
+        );
 
         $output = $this->engine->render('foreach', ['items' => ['A', 'B', 'C']]);
 
@@ -172,8 +176,10 @@ final class ViewEngineTest extends TestCase
 
     public function test_for_directive(): void
     {
-        file_put_contents($this->viewDir . '/for.velvet.php', 
-            '@for($i = 0; $i < 3; $i++){{ $i }}@endfor');
+        file_put_contents(
+            $this->viewDir . '/for.velvet.php',
+            '@for($i = 0; $i < 3; $i++){{ $i }}@endfor'
+        );
 
         $output = $this->engine->render('for');
 
@@ -182,8 +188,10 @@ final class ViewEngineTest extends TestCase
 
     public function test_while_directive(): void
     {
-        file_put_contents($this->viewDir . '/while.velvet.php', 
-            '@php $i = 0; @endphp@while($i < 3){{ $i }}@php $i++; @endphp@endwhile');
+        file_put_contents(
+            $this->viewDir . '/while.velvet.php',
+            '@php $i = 0; @endphp@while($i < 3){{ $i }}@php $i++; @endphp@endwhile'
+        );
 
         $output = $this->engine->render('while');
 

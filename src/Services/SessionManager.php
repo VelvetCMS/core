@@ -18,14 +18,14 @@ class SessionManager
         if (strpos($key, '.') !== false) {
             $segments = explode('.', $key);
             $value = $_SESSION;
-            
+
             foreach ($segments as $segment) {
                 if (!is_array($value) || !array_key_exists($segment, $value)) {
                     return $default;
                 }
                 $value = $value[$segment];
             }
-            
+
             return $value;
         }
 
@@ -37,7 +37,7 @@ class SessionManager
         if (strpos($key, '.') !== false) {
             $segments = explode('.', $key);
             $current = &$_SESSION;
-            
+
             foreach ($segments as $i => $segment) {
                 if ($i === count($segments) - 1) {
                     $current[$segment] = $value;
@@ -64,7 +64,7 @@ class SessionManager
         if (strpos($key, '.') !== false) {
             $segments = explode('.', $key);
             $current = &$_SESSION;
-            
+
             foreach ($segments as $i => $segment) {
                 if ($i === count($segments) - 1) {
                     unset($current[$segment]);
@@ -93,7 +93,7 @@ class SessionManager
     public function ageFlashData(): void
     {
         $this->delete('_flash.old');
-        
+
         if ($this->has('_flash.new')) {
             $this->set('_flash.old', $this->get('_flash.new', []));
             $this->delete('_flash.new');

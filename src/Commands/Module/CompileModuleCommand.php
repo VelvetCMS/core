@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
-use VelvetCMS\Core\ModuleManager;
-use VelvetCMS\Core\VersionRegistry;
 use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ModuleManager;
 use VelvetCMS\Core\ModuleManifest;
+use VelvetCMS\Core\VersionRegistry;
 
 class CompileModuleCommand extends Command
 {
@@ -19,7 +19,8 @@ class CompileModuleCommand extends Command
 
     public function __construct(
         private readonly Application $app
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {
@@ -92,7 +93,7 @@ class CompileModuleCommand extends Command
 
         try {
             $loadOrder = $moduleManager->resolveLoadOrder($validated);
-            $this->line("Resolved load order: " . implode(' → ', $loadOrder));
+            $this->line('Resolved load order: ' . implode(' → ', $loadOrder));
             $this->line();
         } catch (\Exception $e) {
             $this->line("\033[31m✗ Failed to resolve load order: {$e->getMessage()}\033[0m");
@@ -139,8 +140,8 @@ class CompileModuleCommand extends Command
         }
 
         $this->line("\033[32m✓ Successfully compiled " . count($compiled['modules']) . " module(s)\033[0m");
-        $this->line("  Written to: storage/modules-compiled.json");
-        $this->line("  Autoloader: storage/modules-autoload.php");
+        $this->line('  Written to: storage/modules-compiled.json');
+        $this->line('  Autoloader: storage/modules-autoload.php');
 
         return 0;
     }
@@ -182,10 +183,10 @@ class CompileModuleCommand extends Command
         $php = "<?php\n\n";
         $php .= "/**\n";
         $php .= " * Auto-generated module autoloader\n";
-        $php .= " * Generated: " . date('Y-m-d H:i:s') . "\n";
+        $php .= ' * Generated: ' . date('Y-m-d H:i:s') . "\n";
         $php .= " * Do not edit manually - run 'php velvet module:compile' to regenerate\n";
         $php .= " */\n\n";
-        $php .= "return " . var_export($config, true) . ";\n";
+        $php .= 'return ' . var_export($config, true) . ";\n";
 
         $autoloadPath = $this->app->basePath() . '/storage/modules-autoload.php';
         file_put_contents($autoloadPath, $php);
@@ -244,7 +245,7 @@ class CompileModuleCommand extends Command
 
             if (!class_exists($entry)) {
                 $name = $moduleData['name'] ?? 'unknown';
-                $missing[] = sprintf("%s (%s)", $name, $entry);
+                $missing[] = sprintf('%s (%s)', $name, $entry);
             }
         }
 

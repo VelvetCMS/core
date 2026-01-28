@@ -5,8 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Http;
 
 use InvalidArgumentException;
-use VelvetCMS\Http\Response;
 use PHPUnit\Framework\TestCase;
+use VelvetCMS\Http\Response;
 
 final class ResponseTest extends TestCase
 {

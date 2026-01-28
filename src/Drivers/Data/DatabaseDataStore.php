@@ -13,7 +13,8 @@ class DatabaseDataStore implements DataStore
 
     public function __construct(
         private readonly Connection $db
-    ) {}
+    ) {
+    }
 
     public function get(string $collection, string $key): ?array
     {
@@ -27,7 +28,7 @@ class DatabaseDataStore implements DataStore
         }
 
         $data = json_decode($row['data'] ?? '{}', true);
-        
+
         return is_array($data) ? $data : null;
     }
 
@@ -78,7 +79,7 @@ class DatabaseDataStore implements DataStore
             ->get();
 
         $records = [];
-        
+
         foreach ($rows as $row) {
             $data = json_decode($row['data'] ?? '{}', true);
             if (is_array($data)) {
@@ -92,7 +93,7 @@ class DatabaseDataStore implements DataStore
     public function filter(string $collection, callable $predicate): array
     {
         $all = $this->all($collection);
-        
+
         return array_filter($all, $predicate);
     }
 

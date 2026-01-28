@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Integration\Content;
 
 use PDO;
+use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\HybridDriver;
 use VelvetCMS\Models\Page;
 use VelvetCMS\Services\ContentParser;
-use VelvetCMS\Database\Connection;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class HybridDriverTest extends TestCase
@@ -75,22 +75,22 @@ final class HybridDriverTest extends TestCase
             content: '# Hybrid Storage',
             status: 'published'
         );
-        
+
         $driver->save($page);
-        
+
         // Check file exists
         $filepath = $this->tmpDir . '/content/pages/hybrid-test.md';
         $this->assertFileExists($filepath);
-        
+
         // Check file contains content
         $fileContent = file_get_contents($filepath);
         $this->assertStringContainsString('# Hybrid Storage', $fileContent);
-        
+
         // Check DB contains metadata
-        $stmt = $this->db->getPdo()->prepare("SELECT title, status FROM pages WHERE slug = ?");
+        $stmt = $this->db->getPdo()->prepare('SELECT title, status FROM pages WHERE slug = ?');
         $stmt->execute(['hybrid-test']);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
-        
+
         $this->assertSame('Hybrid Test', $row['title']);
         $this->assertSame('published', $row['status']);
     }

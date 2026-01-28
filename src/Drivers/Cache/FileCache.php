@@ -10,25 +10,25 @@ class FileCache implements CacheDriver
 {
     private string $path;
     private string $prefix;
-    
+
     public function __construct(array $config)
     {
         $this->path = $config['path'];
         $this->prefix = $config['prefix'] ?? 'velvet';
-        
+
         if (!is_dir($this->path)) {
             mkdir($this->path, 0755, true);
         }
     }
-    
+
     public function get(string $key, mixed $default = null): mixed
     {
         $file = $this->getFilePath($key);
-        
+
         if (!file_exists($file)) {
             return $default;
         }
-        
+
         $content = file_get_contents($file);
         if ($content === false) {
             return $default;
@@ -54,7 +54,7 @@ class FileCache implements CacheDriver
 
         return $data['value'];
     }
-    
+
     public function set(string $key, mixed $value, int $ttl = 3600): bool
     {
         $file = $this->getFilePath($key);
@@ -75,24 +75,24 @@ class FileCache implements CacheDriver
 
         return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
-    
+
     public function has(string $key): bool
     {
         $sentinel = new \stdClass();
         return $this->get($key, $sentinel) !== $sentinel;
     }
-    
+
     public function delete(string $key): bool
     {
         $file = $this->getFilePath($key);
-        
+
         if (!file_exists($file)) {
             return true;
         }
-        
+
         return unlink($file);
     }
-    
+
     public function clear(): bool
     {
         if (!is_dir($this->path)) {
@@ -103,22 +103,22 @@ class FileCache implements CacheDriver
 
         return true;
     }
-    
+
     public function remember(string $key, int $ttl, callable $callback): mixed
     {
         $sentinel = new \stdClass();
         $value = $this->get($key, $sentinel);
-        
+
         if ($value !== $sentinel) {
             return $value;
         }
-        
+
         $value = $callback();
         $this->set($key, $value, $ttl);
-        
+
         return $value;
     }
-    
+
     private function getFilePath(string $key): string
     {
         $hash = md5($this->prefix . $key);

@@ -54,14 +54,14 @@ class AssetServer
     public static function serve(Request $request): ?Response
     {
         $path = $request->path();
-        
+
         if (!str_starts_with($path, '/assets/')) {
             return null;
         }
 
         // Get path after /assets/
         $assetPath = substr($path, 8);
-        if ($assetPath === '' || $assetPath === false) {
+        if ($assetPath === '') {
             return null;
         }
 
@@ -103,7 +103,7 @@ class AssetServer
     private static function serveModuleAsset(string $module, string $relativePath, string $extension, Request $request): ?Response
     {
         $module = strtolower($module);
-        
+
         if (!isset(self::$modulePaths[$module])) {
             return null;
         }

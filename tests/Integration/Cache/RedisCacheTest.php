@@ -130,7 +130,7 @@ final class RedisCacheTest extends TestCase
             'database' => 15,
             'prefix' => 'other_' . uniqid('', true),
         ]);
-        
+
         $this->cache->set('shared', 'original');
         $otherCache->set('shared', 'other');
 

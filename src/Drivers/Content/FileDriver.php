@@ -5,11 +5,11 @@ declare(strict_types=1);
 namespace VelvetCMS\Drivers\Content;
 
 use VelvetCMS\Contracts\ContentDriver;
-use VelvetCMS\Models\Page;
 use VelvetCMS\Database\Collection;
-use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Exceptions\NotFoundException;
 use VelvetCMS\Exceptions\ValidationException;
+use VelvetCMS\Models\Page;
+use VelvetCMS\Services\ContentParser;
 
 class FileDriver implements ContentDriver
 {
@@ -19,7 +19,7 @@ class FileDriver implements ContentDriver
     private array $index = ['pages' => []];
     private bool $indexLoaded = false;
     private bool $indexDirty = false;
-    
+
     public function __construct(
         private readonly ContentParser $parser,
         ?string $contentPath = null
@@ -27,12 +27,12 @@ class FileDriver implements ContentDriver
         $this->contentPath = $contentPath ?? content_path('pages');
         $this->indexPath = storage_path('cache/file-driver-index.json');
         $this->loadIndex();
-        
+
         if (!is_dir($this->contentPath)) {
             mkdir($this->contentPath, 0755, true);
         }
     }
-    
+
     public function load(string $slug): Page
     {
         $this->ensureIndex();
@@ -55,15 +55,15 @@ class FileDriver implements ContentDriver
 
         return $this->makePageFromEntry($entry);
     }
-    
+
     public function save(Page $page): bool
     {
         $this->validatePage($page);
-        
+
         $filepath = $this->getFilePath($page->slug);
-        
+
         $content = $this->buildFileContent($page);
-        
+
         $result = file_put_contents($filepath, $content) !== false;
 
         if ($result) {
@@ -76,7 +76,7 @@ class FileDriver implements ContentDriver
 
         return $result;
     }
-    
+
     public function list(array $filters = []): Collection
     {
         $this->ensureIndex();
@@ -93,7 +93,7 @@ class FileDriver implements ContentDriver
             $pages[] = $this->makePageFromEntry($entry);
         }
 
-        usort($pages, fn($a, $b) => $b->createdAt <=> $a->createdAt);
+        usort($pages, fn ($a, $b) => $b->createdAt <=> $a->createdAt);
 
         if (isset($filters['offset'])) {
             $pages = array_slice($pages, (int) $filters['offset']);
@@ -122,22 +122,22 @@ class FileDriver implements ContentDriver
             $pages[] = $this->makePageFromEntry($entry);
         }
 
-        usort($pages, fn($a, $b) => $b->createdAt <=> $a->createdAt);
+        usort($pages, fn ($a, $b) => $b->createdAt <=> $a->createdAt);
 
         // Slice for pagination
         $slice = array_slice($pages, ($page - 1) * $perPage, $perPage);
 
         return new Collection($slice);
     }
-    
+
     public function delete(string $slug): bool
     {
         $filepath = $this->getFilePath($slug);
-        
+
         if (!file_exists($filepath)) {
             throw new NotFoundException("Page '{$slug}' not found");
         }
-        
+
         $deleted = unlink($filepath);
 
         if ($deleted) {
@@ -151,7 +151,7 @@ class FileDriver implements ContentDriver
 
         return $deleted;
     }
-    
+
     public function exists(string $slug): bool
     {
         $this->ensureIndex();
@@ -162,7 +162,7 @@ class FileDriver implements ContentDriver
 
         return file_exists($this->getFilePath($slug));
     }
-    
+
     public function count(array $filters = []): int
     {
         $this->ensureIndex();
@@ -173,7 +173,7 @@ class FileDriver implements ContentDriver
 
         return $this->list($filters)->count();
     }
-    
+
     private function getFilePath(string $slug): string
     {
         $safeSlug = sanitize_slug($slug);
@@ -188,44 +188,44 @@ class FileDriver implements ContentDriver
         }
         return $this->contentPath . '/' . $safeSlug . '.md';
     }
-    
+
     private function buildFileContent(Page $page): string
     {
         $frontmatter = [
             'title' => $page->title,
             'status' => $page->status,
         ];
-        
+
         if ($page->layout) {
             $frontmatter['layout'] = $page->layout;
         }
-        
+
         if ($page->excerpt) {
             $frontmatter['excerpt'] = $page->excerpt;
         }
-        
+
         if ($page->createdAt) {
             $frontmatter['created_at'] = $page->createdAt->format('Y-m-d H:i:s');
         }
-        
+
         if ($page->updatedAt) {
             $frontmatter['updated_at'] = $page->updatedAt->format('Y-m-d H:i:s');
         }
-        
+
         if ($page->publishedAt) {
             $frontmatter['published_at'] = $page->publishedAt->format('Y-m-d H:i:s');
         }
-        
+
         // Add custom meta
         foreach ($page->meta as $key => $value) {
             $frontmatter[$key] = $value;
         }
-        
+
         // Use Symfony YAML dumper for proper formatting
         $yaml = "---\n";
         $yaml .= \Symfony\Component\Yaml\Yaml::dump($frontmatter, inline: 2, indent: 2);
         $yaml .= "---\n\n";
-        
+
         return $yaml . $page->content;
     }
 
@@ -300,7 +300,7 @@ class FileDriver implements ContentDriver
             // Determine extension
             $ext = pathinfo($file, PATHINFO_EXTENSION);
             $slug = basename($file, '.' . $ext);
-            
+
             $seen[] = $slug;
             $mtime = filemtime($file) ?: 0;
 
@@ -328,7 +328,7 @@ class FileDriver implements ContentDriver
         $extension = pathinfo($filepath, PATHINFO_EXTENSION);
         $format = ($extension === 'md') ? 'markdown' : 'auto';
         $parsed = $this->parser->parse($content, $format);
-        
+
         $frontmatter = $parsed['frontmatter'];
         $html = $parsed['html'];
         $body = $parsed['body'];
@@ -378,25 +378,25 @@ class FileDriver implements ContentDriver
         $page->setHtml($entry['html']);
         return $page;
     }
-    
+
     private function validatePage(Page $page): void
     {
         $errors = [];
-        
+
         if (empty($page->slug)) {
             $errors['slug'] = 'Slug is required';
         } elseif (sanitize_slug($page->slug) !== $page->slug) {
             $errors['slug'] = 'Slug contains invalid characters';
         }
-        
+
         if (empty($page->title)) {
             $errors['title'] = 'Title is required';
         }
-        
+
         if (!in_array($page->status, ['draft', 'published'])) {
             $errors['status'] = 'Invalid status';
         }
-        
+
         if (!empty($errors)) {
             throw new ValidationException($errors);
         }

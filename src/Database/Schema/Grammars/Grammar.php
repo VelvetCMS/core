@@ -16,7 +16,7 @@ abstract class Grammar
     abstract public function compileIndexes(Blueprint $blueprint): array;
     abstract public function compileForeign(Blueprint $blueprint): array;
     abstract protected function wrap(string $value): string;
-    
+
     abstract protected function typeString(array $column): string;
     abstract protected function typeText(array $column): string;
     abstract protected function typeInteger(array $column): string;

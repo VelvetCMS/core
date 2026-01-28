@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Services\Parsers;
 
-use VelvetCMS\Services\Parsers\ParserFactory;
 use VelvetCMS\Services\Parsers\CommonMarkParser;
-use VelvetCMS\Services\Parsers\ParsedownParser;
 use VelvetCMS\Services\Parsers\HtmlParser;
+use VelvetCMS\Services\Parsers\ParsedownParser;
+use VelvetCMS\Services\Parsers\ParserFactory;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ParserFactoryTest extends TestCase

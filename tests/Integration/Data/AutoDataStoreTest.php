@@ -21,9 +21,9 @@ final class AutoDataStoreTest extends TestCase
 
         $this->fileDataPath = $this->tmpDir . '/data';
         $dbPath = $this->tmpDir . '/data.sqlite';
-        
+
         $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->exec("
+        $pdo->exec('
             CREATE TABLE data_store (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 collection VARCHAR(255) NOT NULL,
@@ -33,7 +33,7 @@ final class AutoDataStoreTest extends TestCase
                 updated_at DATETIME,
                 UNIQUE(collection, key)
             )
-        ");
+        ');
 
         $this->db = new Connection([
             'default' => 'sqlite',
@@ -78,12 +78,12 @@ final class AutoDataStoreTest extends TestCase
         // Manually create file with different value
         mkdir($this->fileDataPath . '/read', 0755, true);
         file_put_contents(
-            $this->fileDataPath . '/read/source.json', 
+            $this->fileDataPath . '/read/source.json',
             json_encode(['from' => 'file'])
         );
 
         $data = $this->store->get('read', 'source');
-        
+
         // Should prefer DB
         $this->assertSame('db', $data['from']);
     }
@@ -93,7 +93,7 @@ final class AutoDataStoreTest extends TestCase
         // Only in file
         mkdir($this->fileDataPath . '/fallback', 0755, true);
         file_put_contents(
-            $this->fileDataPath . '/fallback/key.json', 
+            $this->fileDataPath . '/fallback/key.json',
             json_encode(['found' => true])
         );
 

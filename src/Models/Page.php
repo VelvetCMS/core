@@ -24,7 +24,7 @@ class Page
         $this->createdAt ??= new DateTime();
         $this->updatedAt ??= new DateTime();
     }
-    
+
     public static function fromArray(array $data): self
     {
         return new self(
@@ -40,20 +40,20 @@ class Page
             publishedAt: isset($data['published_at']) ? self::parseDateTime($data['published_at']) : null
         );
     }
-    
+
     private static function parseDateTime(mixed $value): ?DateTime
     {
         if ($value instanceof DateTime) {
             return $value;
         }
-        
+
         if (is_numeric($value)) {
             // Unix timestamp
             $dt = new DateTime();
             $dt->setTimestamp((int) $value);
             return $dt;
         }
-        
+
         if (is_string($value)) {
             try {
                 return new DateTime($value);
@@ -61,10 +61,10 @@ class Page
                 return null;
             }
         }
-        
+
         return null;
     }
-    
+
     public function toArray(): array
     {
         return [
@@ -80,61 +80,61 @@ class Page
             'published_at' => $this->publishedAt?->format('Y-m-d H:i:s'),
         ];
     }
-    
+
     public function html(): string
     {
         return $this->renderedHtml ?? $this->content;
     }
-    
+
     public function setHtml(string $html): self
     {
         $this->renderedHtml = $html;
         return $this;
     }
-    
+
     public function getExcerpt(int $length = 160): string
     {
         if ($this->excerpt) {
             return $this->excerpt;
         }
-        
+
         // Strip HTML tags and get first X characters
         $text = strip_tags($this->html());
         if (mb_strlen($text) <= $length) {
             return $text;
         }
-        
+
         return mb_substr($text, 0, $length) . '...';
     }
-    
+
     public function getMeta(string $key, mixed $default = null): mixed
     {
         return $this->meta[$key] ?? $default;
     }
-    
+
     public function setMeta(string $key, mixed $value): self
     {
         $this->meta[$key] = $value;
         return $this;
     }
-    
+
     public function isPublished(): bool
     {
         return $this->status === 'published';
     }
-    
+
     public function isDraft(): bool
     {
         return $this->status === 'draft';
     }
-    
+
     public function publish(): self
     {
         $this->status = 'published';
         $this->publishedAt = new DateTime();
         return $this;
     }
-    
+
     public function unpublish(): self
     {
         $this->status = 'draft';

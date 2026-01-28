@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Exceptions;
 
-use VelvetCMS\Exceptions\HttpException;
-use VelvetCMS\Exceptions\NotFoundException;
-use VelvetCMS\Exceptions\ModuleException;
 use PHPUnit\Framework\TestCase;
+use VelvetCMS\Exceptions\HttpException;
+use VelvetCMS\Exceptions\ModuleException;
+use VelvetCMS\Exceptions\NotFoundException;
 
 final class ExceptionsTest extends TestCase
 {

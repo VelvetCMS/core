@@ -11,7 +11,8 @@ class GetCommand extends Command
 {
     public function __construct(
         private readonly ConfigRepository $config
-    ) {}
+    ) {
+    }
 
     public static function category(): string
     {
@@ -32,12 +33,12 @@ class GetCommand extends Command
     {
         $key = $this->argument(0);
         if (!$key) {
-            $this->info("Usage: velvet config:get <key>");
+            $this->info('Usage: velvet config:get <key>');
             return 1;
         }
 
         $value = $this->config->get($key);
-        
+
         if ($value === null) {
             echo "null\n";
         } elseif (is_bool($value)) {

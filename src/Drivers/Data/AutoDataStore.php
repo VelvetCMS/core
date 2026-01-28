@@ -54,7 +54,7 @@ class AutoDataStore implements DataStore
     public function forget(string $collection, string $key): bool
     {
         $fileResult = $this->fileStore->forget($collection, $key);
-        
+
         if ($this->dbAvailable) {
             $dbResult = $this->dbStore->forget($collection, $key);
             return $fileResult || $dbResult;
@@ -87,7 +87,7 @@ class AutoDataStore implements DataStore
     public function filter(string $collection, callable $predicate): array
     {
         $all = $this->all($collection);
-        
+
         return array_filter($all, $predicate);
     }
 

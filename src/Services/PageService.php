@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Services;
 
-use VelvetCMS\Contracts\ContentDriver;
-use VelvetCMS\Models\Page;
-use VelvetCMS\Database\Collection;
-use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Contracts\CacheDriver;
-use VelvetCMS\Exceptions\NotFoundException;
+use VelvetCMS\Contracts\ContentDriver;
+use VelvetCMS\Core\EventDispatcher;
+use VelvetCMS\Database\Collection;
+use VelvetCMS\Models\Page;
 use VelvetCMS\Support\Cache\CacheTagManager;
 
 class PageService
@@ -19,18 +18,19 @@ class PageService
         private readonly EventDispatcher $events,
         private readonly CacheDriver $cache,
         private readonly CacheTagManager $cacheTags
-    ) {}
-    
+    ) {
+    }
+
     public function load(string $slug): Page
     {
-        return $this->cache->remember("page:$slug", 300, function() use ($slug) {
+        return $this->cache->remember("page:$slug", 300, function () use ($slug) {
             $this->events->dispatch('page.loading', $slug);
             $page = $this->driver->load($slug);
             $this->events->dispatch('page.loaded', $page);
             return $page;
         });
     }
-    
+
     public function save(Page $page): bool
     {
         $this->events->dispatch('page.saving', $page);
@@ -39,45 +39,45 @@ class PageService
         }
         $page->updatedAt = new \DateTime();
         $result = $this->driver->save($page);
-        
+
         $this->cache->delete("page:{$page->slug}");
         $this->cacheTags->flush('pages:list');
-        
+
         $this->events->dispatch('page.saved', $page);
         return $result;
     }
-    
+
     public function list(array $filters = []): Collection
     {
         $cacheKey = $this->makeListCacheKey($filters);
 
-        return $this->cacheTags->remember('pages:list', $cacheKey, 300, function() use ($filters) {
+        return $this->cacheTags->remember('pages:list', $cacheKey, 300, function () use ($filters) {
             return $this->driver->list($filters);
         });
     }
-    
+
     public function delete(string $slug): bool
     {
         $this->events->dispatch('page.deleting', $slug);
         $result = $this->driver->delete($slug);
-        
+
         $this->cache->delete("page:$slug");
         $this->cacheTags->flush('pages:list');
-        
+
         $this->events->dispatch('page.deleted', $slug);
         return $result;
     }
-    
+
     public function exists(string $slug): bool
     {
         return $this->driver->exists($slug);
     }
-    
+
     public function published(): Collection
     {
         return $this->list(['status' => 'published']);
     }
-    
+
     public function drafts(): Collection
     {
         return $this->list(['status' => 'draft']);

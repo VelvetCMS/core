@@ -13,7 +13,8 @@ final class CacheTagManager
 
     public function __construct(
         private readonly CacheDriver $cache
-    ) {}
+    ) {
+    }
 
     /** @param string|string[] $tags */
     public function remember(string|array $tags, string $key, int $ttl, callable $callback): mixed

@@ -28,7 +28,7 @@ final class QueryBuilderTest extends TestCase
         ];
 
         $this->connection = new Connection($config);
-        
+
         // Create test table
         $this->connection->statement('CREATE TABLE IF NOT EXISTS users (
             id INTEGER PRIMARY KEY,
@@ -38,7 +38,7 @@ final class QueryBuilderTest extends TestCase
             score INTEGER DEFAULT 0,
             created_at TEXT
         )');
-        
+
         $this->connection->statement('CREATE TABLE IF NOT EXISTS posts (
             id INTEGER PRIMARY KEY,
             user_id INTEGER,
@@ -424,7 +424,7 @@ final class QueryBuilderTest extends TestCase
     public function test_find_by_id(): void
     {
         $this->builder()->table('users')->insert(['name' => 'FindMe', 'email' => 'find@test.com']);
-        
+
         $user = $this->builder()->table('users')->where('email', '=', 'find@test.com')->first();
         $found = $this->builder()->table('users')->find($user['id']);
 

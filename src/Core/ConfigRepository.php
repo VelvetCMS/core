@@ -24,9 +24,6 @@ class ConfigRepository
 
     private ?string $cacheFile;
 
-    private ?array $siteConfig = null;
-    private bool $siteConfigChecked = false;
-
     public function __construct(string $configPath, ?string $cacheFile = null, ?string $userConfigPath = null, ?string $tenantConfigPath = null)
     {
         $this->configPath = rtrim($configPath, DIRECTORY_SEPARATOR);
@@ -114,7 +111,7 @@ class ConfigRepository
         $this->load($name);
 
         $segments = explode('.', $path);
-        $reference =& $this->items[$name];
+        $reference = & $this->items[$name];
 
         foreach ($segments as $segment) {
             if (!is_array($reference)) {
@@ -125,7 +122,7 @@ class ConfigRepository
                 $reference[$segment] = [];
             }
 
-            $reference =& $reference[$segment];
+            $reference = & $reference[$segment];
         }
 
         $reference = $value;
@@ -159,9 +156,9 @@ class ConfigRepository
 return {$export};
 PHP;
 
-    file_put_contents($destination, $content);
+        file_put_contents($destination, $content);
 
-    $this->cacheFile = $destination;
+        $this->cacheFile = $destination;
     }
 
     public function clearCache(): void

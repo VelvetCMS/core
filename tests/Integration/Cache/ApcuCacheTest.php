@@ -21,7 +21,7 @@ final class ApcuCacheTest extends TestCase
         }
 
         if (PHP_SAPI === 'cli' && !ini_get('apc.enable_cli')) {
-             $this->markTestSkipped('apc.enable_cli must be enabled for testing.');
+            $this->markTestSkipped('apc.enable_cli must be enabled for testing.');
         }
 
         $this->prefix = 'test_' . uniqid();
@@ -99,7 +99,7 @@ final class ApcuCacheTest extends TestCase
     public function test_prefix_isolates_keys(): void
     {
         $otherCache = new ApcuCache(['prefix' => 'other_' . uniqid()]);
-        
+
         $this->cache->set('shared', 'original');
         $otherCache->set('shared', 'other');
 

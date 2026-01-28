@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Router;
 
 use VelvetCMS\Core\EventDispatcher;
-use VelvetCMS\Http\Routing\Router;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
+use VelvetCMS\Http\Routing\Router;
 use VelvetCMS\Tests\Support\Stubs\RecordingMiddleware;
 use VelvetCMS\Tests\Support\TestCase;
 
@@ -97,7 +97,7 @@ final class RouterMiddlewareTest extends TestCase
         $router->get('/pipeline', fn (Request $request): Response => Response::html('ok'));
 
         $response = $router->dispatch(new Request());
-        
+
         $this->assertSame(200, $response->getStatus());
     }
 }

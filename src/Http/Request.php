@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Http;
 
-use VelvetCMS\Exceptions\ValidationException;
-
 class Request
 {
     private array $query;
@@ -14,7 +12,7 @@ class Request
     private array $files;
     private array $cookies;
     private ?string $pathPrefix = null;
-    
+
     public function __construct()
     {
         $this->query = $_GET;
@@ -36,16 +34,16 @@ class Request
     {
         return new self();
     }
-    
+
     public function method(): string
     {
         return strtoupper($this->server['REQUEST_METHOD'] ?? 'GET');
     }
-    
+
     public function path(): string
     {
         $path = $this->server['REQUEST_URI'] ?? '/';
-        
+
         // Remove query string
         if (($pos = strpos($path, '?')) !== false) {
             $path = substr($path, 0, $pos);
@@ -59,7 +57,7 @@ class Request
             $prefix = rtrim($this->pathPrefix, '/');
             if ($prefix !== '' && str_starts_with($path, $prefix)) {
                 $path = substr($path, strlen($prefix));
-                if ($path === '' || $path === false) {
+                if ($path === '') {
                     $path = '/';
                 }
             }
@@ -72,7 +70,7 @@ class Request
         if ($path === '') {
             $path = '/';
         }
-        
+
         return $path;
     }
 
@@ -98,7 +96,7 @@ class Request
 
         return $path;
     }
-    
+
     public function url(): string
     {
         $scheme = $this->isSecure() ? 'https' : 'http';
@@ -128,83 +126,83 @@ class Request
         $prefix = '/' . ltrim($prefix, '/');
         $this->pathPrefix = rtrim($prefix, '/');
     }
-    
+
     public function isSecure(): bool
     {
         return isset($this->server['HTTPS']) && $this->server['HTTPS'] !== 'off';
     }
-    
+
     public function input(string $key, mixed $default = null): mixed
     {
         return $this->request[$key] ?? $this->query[$key] ?? $default;
     }
-    
+
     public function all(): array
     {
         return array_merge($this->query, $this->request);
     }
-    
+
     public function only(array $keys): array
     {
         return array_intersect_key($this->all(), array_flip($keys));
     }
-    
+
     public function except(array $keys): array
     {
         return array_diff_key($this->all(), array_flip($keys));
     }
-    
+
     public function has(string $key): bool
     {
         return array_key_exists($key, $this->request) || array_key_exists($key, $this->query);
     }
-    
+
     public function query(string $key, mixed $default = null): mixed
     {
         return $this->query[$key] ?? $default;
     }
-    
+
     public function post(string $key, mixed $default = null): mixed
     {
         return $this->request[$key] ?? $default;
     }
-    
+
     public function file(string $key): ?array
     {
         return $this->files[$key] ?? null;
     }
-    
+
     public function cookie(string $key, mixed $default = null): mixed
     {
         return $this->cookies[$key] ?? $default;
     }
-    
+
     public function header(string $key, mixed $default = null): mixed
     {
         $key = 'HTTP_' . strtoupper(str_replace('-', '_', $key));
         return $this->server[$key] ?? $default;
     }
-    
+
     public function userAgent(): ?string
     {
         return $this->server['HTTP_USER_AGENT'] ?? null;
     }
-    
+
     public function ip(): ?string
     {
         return $this->server['REMOTE_ADDR'] ?? null;
     }
-    
+
     public function ajax(): bool
     {
         return strtolower($this->header('X-Requested-With', '')) === 'xmlhttprequest';
     }
-    
+
     public function expectsJson(): bool
     {
         return str_contains($this->header('Accept', ''), 'application/json');
     }
-    
+
     public function validate(array $rules): array
     {
         return \VelvetCMS\Validation\Validator::make($this->all(), $rules)->validate();

@@ -69,7 +69,7 @@ final class EventDispatcherTest extends TestCase
 
     public function test_has_listeners_returns_true_when_registered(): void
     {
-        $this->events->listen('has.test', fn() => null);
+        $this->events->listen('has.test', fn () => null);
 
         $this->assertTrue($this->events->hasListeners('has.test'));
     }
@@ -81,7 +81,7 @@ final class EventDispatcherTest extends TestCase
 
     public function test_has_listeners_returns_false_after_forget(): void
     {
-        $this->events->listen('forget.test', fn() => null);
+        $this->events->listen('forget.test', fn () => null);
         $this->assertTrue($this->events->hasListeners('forget.test'));
 
         $this->events->forget('forget.test');
@@ -110,9 +110,9 @@ final class EventDispatcherTest extends TestCase
 
     public function test_get_events_returns_registered_event_names(): void
     {
-        $this->events->listen('event.one', fn() => null);
-        $this->events->listen('event.two', fn() => null);
-        $this->events->listen('event.three', fn() => null);
+        $this->events->listen('event.one', fn () => null);
+        $this->events->listen('event.two', fn () => null);
+        $this->events->listen('event.three', fn () => null);
 
         $events = $this->events->getEvents();
 

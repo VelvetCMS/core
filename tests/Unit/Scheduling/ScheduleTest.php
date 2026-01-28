@@ -35,10 +35,10 @@ final class ScheduleTest extends TestCase
         $hour = (int) $now->format('H');
         $minute = (int) $now->format('i');
 
-        $schedule->call(fn() => null)->dailyAt($hour, $minute);
+        $schedule->call(fn () => null)->dailyAt($hour, $minute);
 
         $notDueMinute = ($minute + 1) % 60;
-        $schedule->call(fn() => null)->dailyAt($hour, $notDueMinute);
+        $schedule->call(fn () => null)->dailyAt($hour, $notDueMinute);
 
         $due = $schedule->getDueTasks();
         $this->assertCount(1, $due);
@@ -55,7 +55,7 @@ final class ScheduleTest extends TestCase
 
     public function test_every_minute_tasks_are_due(): void
     {
-        $task = new Task(fn() => null);
+        $task = new Task(fn () => null);
         $task->everyMinute();
 
         $this->assertTrue($task->isDue());

@@ -16,39 +16,40 @@ class MigrateCommand extends Command
 
     public function __construct(
         private readonly Migrator $migrator
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {
         return 'migrate [--force] [--path=]';
     }
-    
+
     public function description(): string
     {
         return 'Run database migrations';
     }
-    
+
     public function handle(): int
     {
         $defaultPath = base_path('database/migrations');
         $env = env('APP_ENV', 'production');
-        
+
         if ($env === 'production' && !$this->option('force')) {
             $this->warning('Running migrations in production!');
-            
+
             if (!$this->confirm('Are you sure?', false)) {
                 $this->info('Migration cancelled');
                 return 0;
             }
         }
-        
+
         $paths = $this->resolvePaths($defaultPath);
 
         if ($this->option('path') === null) {
             $paths = array_merge($paths, $this->getModuleMigrationPaths());
         }
 
-        $pathsWithMigrations = array_filter($paths, function(string $path): bool {
+        $pathsWithMigrations = array_filter($paths, function (string $path): bool {
             return (glob($path . '/*') ?: []) !== [];
         });
 
@@ -110,7 +111,7 @@ class MigrateCommand extends Command
     private function getModuleMigrationPaths(): array
     {
         global $app;
-        
+
         if (!isset($app) || !$app->has(\VelvetCMS\Core\ModuleManager::class)) {
             return [];
         }

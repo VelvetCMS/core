@@ -50,14 +50,14 @@ final class FileDriverTest extends TestCase
     {
         $driver = $this->driver();
         $this->expectException(\VelvetCMS\Exceptions\ValidationException::class);
-        
+
         // Page with empty slug
         $page = new Page(
             slug: '',
             title: 'Test',
             content: 'Content'
         );
-        
+
         $driver->save($page);
     }
 
@@ -66,14 +66,14 @@ final class FileDriverTest extends TestCase
         $driver = $this->driver();
         $page = new Page('update-test', 'Original', 'Original content');
         $driver->save($page);
-        
+
         // Update
         $page->title = 'Updated';
         $page->content = 'Updated content';
         $driver->save($page);
-        
+
         $loaded = $driver->load('update-test');
-        
+
         $this->assertSame('Updated', $loaded->title);
         $this->assertSame('Updated content', $loaded->content);
     }

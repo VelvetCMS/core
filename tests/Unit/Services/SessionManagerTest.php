@@ -17,7 +17,7 @@ final class SessionManagerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Mock session start
         if (session_status() !== PHP_SESSION_ACTIVE) {
             // We can't really start a session in CLI easily without headers sent issues,
@@ -27,7 +27,7 @@ final class SessionManagerTest extends TestCase
             // The class sets $started = session_status() === PHP_SESSION_ACTIVE.
             // But the methods don't check $started, they just use $_SESSION.
         }
-        
+
         $_SESSION = [];
         $this->session = new SessionManager();
     }
@@ -42,7 +42,7 @@ final class SessionManagerTest extends TestCase
     public function test_can_set_and_get_nested_values(): void
     {
         $this->session->set('user.profile.name', 'John');
-        
+
         $this->assertSame('John', $this->session->get('user.profile.name'));
         $this->assertIsArray($_SESSION['user']);
         $this->assertSame('John', $_SESSION['user']['profile']['name']);
@@ -57,7 +57,7 @@ final class SessionManagerTest extends TestCase
     public function test_can_check_existence(): void
     {
         $this->session->set('exists', true);
-        
+
         $this->assertTrue($this->session->has('exists'));
         $this->assertFalse($this->session->has('missing'));
     }
@@ -66,7 +66,7 @@ final class SessionManagerTest extends TestCase
     {
         $this->session->set('foo', 'bar');
         $this->session->delete('foo');
-        
+
         $this->assertFalse($this->session->has('foo'));
         $this->assertArrayNotHasKey('foo', $_SESSION);
     }
@@ -75,7 +75,7 @@ final class SessionManagerTest extends TestCase
     {
         $this->session->set('a.b.c', 'value');
         $this->session->delete('a.b.c');
-        
+
         $this->assertFalse($this->session->has('a.b.c'));
         $this->assertTrue($this->session->has('a.b')); // Parent should still exist
     }
@@ -85,13 +85,13 @@ final class SessionManagerTest extends TestCase
         // 1. Set flash
         $this->session->flash('message', 'Hello');
         $this->assertTrue($this->session->has('_flash.new.message'));
-        
+
         // 2. Age flash (move new to old)
         $this->session->ageFlashData();
         $this->assertFalse($this->session->has('_flash.new.message'));
         $this->assertTrue($this->session->has('_flash.old.message'));
         $this->assertSame('Hello', $this->session->getFlash('message'));
-        
+
         // 3. Age again (delete old)
         $this->session->ageFlashData();
         $this->assertFalse($this->session->has('_flash.old.message'));

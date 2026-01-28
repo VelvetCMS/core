@@ -16,7 +16,8 @@ class HelpCommand extends Command
 
     public function __construct(
         private readonly CommandRegistry $registry
-    ) {}
+    ) {
+    }
 
     public function signature(): string
     {

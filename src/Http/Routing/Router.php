@@ -26,7 +26,8 @@ class Router
 
     public function __construct(
         private readonly EventDispatcher $events
-    ) {}
+    ) {
+    }
 
     public function setApp(Application $app): void
     {

@@ -36,7 +36,7 @@ class ValidationException extends HttpException
 
     private function formatHtml(): string
     {
-        $items = array_map(static fn(string $field, array $messages): string => '<li><strong>' . htmlspecialchars($field, ENT_QUOTES, 'UTF-8') . ':</strong> ' . htmlspecialchars(implode(', ', $messages), ENT_QUOTES, 'UTF-8') . '</li>', array_keys($this->errors), $this->errors);
+        $items = array_map(static fn (string $field, array $messages): string => '<li><strong>' . htmlspecialchars($field, ENT_QUOTES, 'UTF-8') . ':</strong> ' . htmlspecialchars(implode(', ', $messages), ENT_QUOTES, 'UTF-8') . '</li>', array_keys($this->errors), $this->errors);
 
         $list = implode('', $items);
 
