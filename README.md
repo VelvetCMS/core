@@ -86,7 +86,12 @@ We reject the "magic" that plagues modern PHP. We believe you should be able to 
   - ✅ **SQL Injection** - Prepared statements everywhere
   - ✅ **Session Security** - httponly, secure, samesite flags
   - ✅ **Path Traversal** - Sanitization and realpath checks
-- **Rate Limiting Middleware**: Request throttling backed by cache.
+- **Rate Limiting**:
+  - **Named Limiters**: Pre-configured (`standard`, `api`, `auth`, `strict`) or custom.
+  - **Module Support**: Modules register their own limiters via `RateLimiter` service.
+  - **Dynamic Limits**: Callbacks for user-aware throttling (e.g., premium users).
+  - **Flexible Keys**: Limit by IP, user, route, or custom keys.
+  - **Whitelist**: Bypass for trusted IPs.
 - **Exception Handling**:
   - **Custom Handler**: Centralized error handling and reporting.
   - **HTTP Exceptions**: Specialized exceptions for 404, 403, 500, etc.
