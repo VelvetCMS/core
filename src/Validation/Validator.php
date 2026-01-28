@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Validation;
 
+use Closure;
 use VelvetCMS\Exceptions\ValidationException;
 
 class Validator
@@ -11,6 +12,9 @@ class Validator
     private array $data;
     private array $rules;
     private array $errors = [];
+    
+    /** @var array<string, Closure> */
+    private static array $extensions = [];
 
     public function __construct(array $data, array $rules)
     {
@@ -21,6 +25,22 @@ class Validator
     public static function make(array $data, array $rules): self
     {
         return new self($data, $rules);
+    }
+    
+    /**
+     * Register a custom validation rule.
+     * 
+     * Callback signature: fn(mixed $value, ?string $parameter, array $data, string $field): bool|string
+     * Return true if valid, false or error message string if invalid.
+     */
+    public static function extend(string $rule, Closure $callback): void
+    {
+        self::$extensions[$rule] = $callback;
+    }
+    
+    public static function hasExtension(string $rule): bool
+    {
+        return isset(self::$extensions[$rule]);
     }
 
     public function validate(): array
@@ -61,6 +81,18 @@ class Validator
 
     private function checkRule(string $field, mixed $value, string $rule, ?string $parameter): void
     {
+        // Check custom extensions first
+        if (isset(self::$extensions[$rule])) {
+            $result = (self::$extensions[$rule])($value, $parameter, $this->data, $field);
+            
+            if ($result === false) {
+                $this->addError($field, "The {$field} field is invalid.");
+            } elseif (is_string($result)) {
+                $this->addError($field, $result);
+            }
+            return;
+        }
+        
         switch ($rule) {
             case 'max':
                 $max = (int) $parameter;
