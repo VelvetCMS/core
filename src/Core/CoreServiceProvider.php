@@ -13,16 +13,13 @@ class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        // Config
         $configRepository = ConfigRepository::getInstance();
         $this->app->instance('config', $configRepository);
         $this->app->instance(ConfigRepository::class, $configRepository);
 
-        // Events
         $this->app->singleton('events', fn() => new EventDispatcher());
         $this->app->alias('events', EventDispatcher::class);
 
-        // Logger
         $this->app->singleton('logger', function() {
             $logPath = storage_path('logs/velvet.log');
             $level = config('app.log_level', 'info');
@@ -30,7 +27,6 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('logger', \Psr\Log\LoggerInterface::class);
 
-        // Exception Handler
         $this->app->singleton('exceptions.handler', function() {
             $renderers = (array) config('exceptions.renderers', []);
             $reporters = (array) config('exceptions.reporters', []);
@@ -46,7 +42,6 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\ExceptionHandlerInterface::class);
         $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\Handler::class);
 
-        // Router
         $this->app->singleton('router', function() {
             $router = new Router($this->app->get('events'));
             $router->setApp($this->app);
@@ -78,7 +73,6 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('router', Router::class);
 
-        // Database
         $this->app->singleton('db', function() {
             $config = config('db');
 
@@ -90,7 +84,6 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('db', \VelvetCMS\Database\Connection::class);
 
-        // Cache
         $this->app->singleton('cache', function() {
             $driver = config('cache.default', 'file');
             $config = config("cache.drivers.{$driver}", []);
@@ -110,7 +103,6 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('cache', \VelvetCMS\Contracts\CacheDriver::class);
 
-        // Tenant context (nullable)
         $this->app->singleton('tenant', fn() => \VelvetCMS\Core\Tenancy\TenancyManager::current());
         $this->app->alias('tenant', \VelvetCMS\Core\Tenancy\TenantContext::class);
 
@@ -121,7 +113,6 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('cache.tags', \VelvetCMS\Support\Cache\CacheTagManager::class);
 
-        // Markdown Parser
         $this->app->singleton(\VelvetCMS\Contracts\ParserInterface::class, function() {
             $driver = config('content.parser.driver', 'commonmark');
             $driverConfig = config("content.parser.drivers.{$driver}", []);
@@ -129,7 +120,6 @@ class CoreServiceProvider extends ServiceProvider
             return (new \VelvetCMS\Services\Parsers\ParserFactory())->make($driver, $driverConfig);
         });
 
-        // Content parser (markdown + velvet blocks)
         $this->app->singleton('parser', function() {
             return new \VelvetCMS\Services\ContentParser(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class),
@@ -138,11 +128,9 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('parser', \VelvetCMS\Services\ContentParser::class);
 
-        // View engine
         $this->app->singleton('view', fn() => new \VelvetCMS\Services\ViewEngine());
         $this->app->alias('view', \VelvetCMS\Services\ViewEngine::class);
 
-        // Migrations
         $this->app->singleton(\VelvetCMS\Database\Migrations\MigrationRepository::class, function() {
             return new \VelvetCMS\Database\Migrations\MigrationRepository(
                 $this->app->make(\VelvetCMS\Database\Connection::class)
@@ -157,24 +145,26 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('migrator', \VelvetCMS\Database\Migrations\Migrator::class);
 
-        $this->app->singleton('session', function() {
-            return new \VelvetCMS\Services\SessionManager();
-        });
+        $this->app->singleton('session', fn() => new \VelvetCMS\Services\SessionManager());
         $this->app->alias('session', \VelvetCMS\Services\SessionManager::class);
 
-        // Scheduler
-        $this->app->singleton('schedule', function() {
-            return new \VelvetCMS\Scheduling\Schedule();
+        $this->app->singleton('rate_limiter', function() {
+            $rateLimiter = new \VelvetCMS\Http\RateLimiting\RateLimiter(
+                $this->app->make(\VelvetCMS\Contracts\CacheDriver::class)
+            );
+            $rateLimiter->whitelist((array) config('http.rate_limit.whitelist', []));
+
+            return $rateLimiter;
         });
+        $this->app->alias('rate_limiter', \VelvetCMS\Http\RateLimiting\RateLimiter::class);
+        $this->app->alias('rate_limiter', \VelvetCMS\Contracts\RateLimiterInterface::class);
+
+        $this->app->singleton('schedule', fn() => new \VelvetCMS\Scheduling\Schedule());
         $this->app->alias('schedule', \VelvetCMS\Scheduling\Schedule::class);
 
-        // Storage
-        $this->app->singleton('storage', function() {
-            return new \VelvetCMS\Services\StorageManager(config('filesystems', []));
-        });
+        $this->app->singleton('storage', fn() => new \VelvetCMS\Services\StorageManager(config('filesystems', [])));
         $this->app->alias('storage', \VelvetCMS\Services\StorageManager::class);
 
-        // Module Manager
         $this->app->singleton('modules', function() {
             $manager = new ModuleManager($this->app);
             $manager->load();
@@ -196,7 +186,6 @@ class CoreServiceProvider extends ServiceProvider
             $this->app->make('modules')->boot();
         }
 
-        // Register WebCron route if configured
         if (config('app.cron_enabled', false)) {
             $router = $this->app->make('router');
             $router->get('/system/cron', function() {

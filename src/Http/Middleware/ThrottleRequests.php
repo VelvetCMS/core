@@ -4,66 +4,123 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Http\Middleware;
 
-use VelvetCMS\Contracts\CacheDriver;
+use VelvetCMS\Http\RateLimiting\Limit;
+use VelvetCMS\Http\RateLimiting\RateLimiter;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
 class ThrottleRequests implements MiddlewareInterface
 {
+    private ?string $limiterName = null;
+
     public function __construct(
-        private readonly CacheDriver $cache
+        private readonly RateLimiter $rateLimiter
     ) {}
+
+    public function setLimiter(string $limiter): self
+    {
+        $this->limiterName = $limiter;
+        return $this;
+    }
 
     public function handle(Request $request, callable $next): Response
     {
-        // Get configuration or defaults
-        $maxAttempts = (int) config('http.rate_limit.max_attempts', 60);
-        $decayMinutes = (int) config('http.rate_limit.decay_minutes', 1);
-        $decaySeconds = $decayMinutes * 60;
+        if (!config('http.rate_limit.enabled', true)) {
+            return $next($request);
+        }
 
-        // Generate cache key based on IP
         $ip = $request->ip() ?? 'unknown';
-        $key = 'throttle:' . $ip;
-        
-        $data = $this->cache->get($key);
-
-        // First hit
-        if ($data === null) {
-            $this->cache->set($key, [
-                'hits' => 1,
-                'reset_at' => time() + $decaySeconds
-            ], $decaySeconds);
-            
-            $remaining = $maxAttempts - 1;
-            $response = $next($request);
-            return $this->addHeaders($response, $maxAttempts, $remaining, $decaySeconds);
+        if ($this->rateLimiter->isWhitelisted($ip)) {
+            return $next($request);
         }
 
-        // Ensure data is valid
-        if (!is_array($data) || !isset($data['hits'], $data['reset_at'])) {
-             $this->cache->delete($key);
-             return $next($request);
+        $limit = $this->resolveLimit($request);
+
+        if ($limit->isUnlimited()) {
+            return $next($request);
         }
 
-        // Check limit
-        if ($data['hits'] >= $maxAttempts) {
-            $retryAfter = $data['reset_at'] - time();
-            
-            return Response::json([
-                'error' => 'Too Many Requests',
-                'message' => 'You have exceeded the rate limit.'
-            ], 429)->header('Retry-After', (string) max(0, $retryAfter));
+        $key = $this->rateLimiter->resolveKey($request, $limit, $this->limiterName);
+        $result = $this->rateLimiter->attempt($key, $limit->maxAttempts, $limit->decaySeconds);
+
+        if (!$result['allowed']) {
+            return $this->buildTooManyRequestsResponse($limit->maxAttempts, $result['retryAfter']);
         }
 
-        // Increment hits
-        $data['hits']++;
-        $ttl = max(1, $data['reset_at'] - time());
-        $this->cache->set($key, $data, $ttl);
-
-        $remaining = $maxAttempts - $data['hits'];
-        
         $response = $next($request);
-        return $this->addHeaders($response, $maxAttempts, $remaining, $ttl);
+        return $this->addHeaders($response, $limit->maxAttempts, $result['remaining'], $result['retryAfter']);
+    }
+
+    protected function resolveLimit(Request $request): Limit
+    {
+        if ($this->limiterName === null) {
+            return $this->getDefaultLimit();
+        }
+
+        // Inline format: 'attempts,minutes'
+        if (str_contains($this->limiterName, ',')) {
+            return $this->parseInlineLimit($this->limiterName);
+        }
+
+        // Try named limiter from service
+        $limit = $this->rateLimiter->limiter($this->limiterName, $request);
+        if ($limit !== null) {
+            return $limit;
+        }
+
+        // Try config limiter
+        $configuredLimit = $this->getConfiguredLimit($this->limiterName);
+        if ($configuredLimit !== null) {
+            return $configuredLimit;
+        }
+
+        return $this->getDefaultLimit();
+    }
+
+    protected function getDefaultLimit(): Limit
+    {
+        $defaultName = config('http.rate_limit.default', 'standard');
+
+        return $this->getConfiguredLimit($defaultName) ?? new Limit();
+    }
+
+    protected function getConfiguredLimit(string $name): ?Limit
+    {
+        $limiters = config('http.rate_limit.limiters', []);
+
+        if (!isset($limiters[$name])) {
+            return null;
+        }
+
+        $config = $limiters[$name];
+
+        return new Limit(
+            maxAttempts: (int) ($config['attempts'] ?? 60),
+            decaySeconds: (int) ($config['decay'] ?? 60),
+            by: $config['by'] ?? 'ip'
+        );
+    }
+
+    protected function parseInlineLimit(string $definition): Limit
+    {
+        $parts = explode(',', $definition);
+
+        $attempts = (int) ($parts[0] ?? 60);
+        $minutes = (int) ($parts[1] ?? 1);
+
+        return new Limit($attempts, $minutes * 60);
+    }
+
+    protected function buildTooManyRequestsResponse(int $limit, int $retryAfter): Response
+    {
+        return Response::json([
+            'error' => 'Too Many Requests',
+            'message' => 'You have exceeded the rate limit.',
+        ], 429)
+            ->header('Retry-After', (string) $retryAfter)
+            ->header('X-RateLimit-Limit', (string) $limit)
+            ->header('X-RateLimit-Remaining', '0')
+            ->header('X-RateLimit-Reset', (string) (time() + $retryAfter));
     }
 
     private function addHeaders(Response $response, int $limit, int $remaining, int $reset): Response

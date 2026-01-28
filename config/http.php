@@ -24,9 +24,18 @@ return [
         ],
     ],
     
-    /** Rate limiting configuration */
+    /** Rate limiting */
     'rate_limit' => [
-        'max_attempts' => 60,
-        'decay_minutes' => 1,
+        'enabled' => true,
+        'default' => 'standard',
+
+        'limiters' => [
+            'standard' => ['attempts' => 60, 'decay' => 60, 'by' => 'ip'],
+            'api' => ['attempts' => 120, 'decay' => 60, 'by' => 'ip'],
+            'auth' => ['attempts' => 5, 'decay' => 60, 'by' => 'ip'],
+            'strict' => ['attempts' => 10, 'decay' => 60, 'by' => 'ip'],
+        ],
+
+        'whitelist' => ['127.0.0.1', '::1'],
     ],
 ];
