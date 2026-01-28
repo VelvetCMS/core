@@ -21,7 +21,12 @@ Thanks for your interest in contributing to VelvetCMS.
    composer test
    ```
 
-4. **Serve locally**
+4. **Run QA checks**
+   ```bash
+   composer qa
+   ```
+
+5. **Serve locally**
    ```bash
    ./velvet serve
    ```
@@ -39,7 +44,7 @@ All code style and PHPDoc guidance lives in [CODING_STANDARDS.md](CODING_STANDAR
 
 1. Write focused changes with tests when possible.
 2. Update docs when behavior changes.
-3. Run `composer test` before pushing.
+3. Run `composer qa` before pushing (style + static analysis).
 
 ## Security
 

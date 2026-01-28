@@ -61,15 +61,24 @@ Avoid PHPDoc for:
 - Redundant type repetition.
 - "What" comments (use "Why" comments inside code instead).
 
-## Tooling (Optional)
+## Tooling
 
-We don’t require tooling in the core workflow yet, but if we add it, the preferred direction is:
+We use automated tools to enforce style and catch issues early:
 
-- **Formatter/Fixer**: auto-format to PSR-12 baseline (minimize style churn in reviews)
-- **Static analysis**: catch type issues and dead code early (introduced gradually)
+| Tool | Purpose | Command |
+|------|---------|--------|
+| **PHP-CS-Fixer** | Enforces PSR-12 and style rules | `composer cs:fix` |
+| **PHPStan** | Static analysis (level 5) | `composer analyse` |
 
-If you want to propose a tooling setup, include:
+### Available Commands
 
-- A composer script (e.g. `composer lint`, `composer format`, `composer analyse`)
-- Clear instructions for contributors
-- A configuration file committed to the repo
+```bash
+composer cs:check   # Check style without fixing
+composer cs:fix     # Auto-fix style issues
+composer analyse    # Run static analysis
+composer qa         # Run both checks
+```
+
+### Before Committing
+
+Run `composer qa` to catch issues before they reach CI. The fixer will auto-correct most style violations.
