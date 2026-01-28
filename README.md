@@ -11,22 +11,16 @@
 
 ---
 
-## Why VelvetCMS?
+## Why VelvetCMS Core?
 
-Most PHP frameworks fall into two camps: heavyweight full-stack solutions with steep learning curves, or minimal routers that leave you rebuilding the same features for every project.
+Most PHP frameworks fall into two camps: heavyweight full-stack solutions with steep learning curves, or minimal routers that leave you rebuilding the same features for every project. VelvetCMS Core fills the gap.
 
-VelvetCMS Core fills the gap - a content-focused framework that's lightweight enough to stay out of your way, yet structured enough to power real applications.
+We call it **Pragmatic Zero Magic**. You should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
 
-## Philosophy: Pragmatic Zero Magic
-
-VelvetCMS Core is a **Content Application Framework** designed to be understood, not just used.
-
-We reject the "magic" that plagues modern PHP. We believe you should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
-
-- **Explicit over Implicit**: We wire our core services manually. It's faster, clearer, and easier to debug.
-- **Pragmatic Convenience**: We don't hate productivity. Autowiring is available for your controllers and commands, but it's a tool, not a crutch.
-- **No Facades**: We don't use static proxies to hide dependencies. We use standard injection and clear helpers.
-- **Content First**: While other frameworks focus on generic "web apps", we focus on *content*. Our drivers, caching, and routing are optimized for publishing.
+- **Explicit over Implicit**: Core services are wired manually. It's faster, clearer, and easier to debug.
+- **Pragmatic Convenience**: Autowiring is available for your controllers and commands, but it's a tool, not a crutch.
+- **No Facades**: No static proxies hiding dependencies. Standard injection and clear helpers.
+- **Content First**: Drivers, caching, and routing are optimized for publishing, not generic "web apps".
 
 ---
 
