@@ -11,43 +11,59 @@ use VelvetCMS\Models\Page;
 class AutoDriver implements ContentDriver
 {
     private ContentDriver $activeDriver;
+    private string $activeDriverName;
     private int $threshold;
-    private ?int $lastKnownCount = null;
-    private bool $forceNextEvaluation = false;
+    private bool $overThreshold = false;
 
     public function __construct(
         private readonly FileDriver $fileDriver,
         private readonly HybridDriver $hybridDriver,
+        private readonly ?DBDriver $dbDriver = null,
         ?int $threshold = null
     ) {
         $this->threshold = $threshold ?? config('content.drivers.auto.threshold', 100);
-        $this->determineActiveDriver();
+        $this->selectDriver();
     }
 
-    private function determineActiveDriver(bool $force = false): void
+    /**
+     * Select driver once at boot based on configured preference and page count.
+     */
+    private function selectDriver(): void
     {
-        if ($this->lastKnownCount !== null && !$force && !$this->forceNextEvaluation) {
-            $pageCount = $this->lastKnownCount;
-        } else {
-            $pageCount = $this->countPages();
-            $this->lastKnownCount = $pageCount;
-            $this->forceNextEvaluation = false;
-        }
+        $smallDriver = config('content.drivers.auto.small_site', 'file');
+        $largeDriver = config('content.drivers.auto.large_site', 'hybrid');
 
-        if ($pageCount >= $this->threshold) {
-            // Switch to hybrid for better performance with many pages
-            $this->activeDriver = $this->hybridDriver;
-        } else {
-            // Use file driver for simplicity with few pages
-            $this->activeDriver = $this->fileDriver;
+        $pageCount = $this->fileDriver->count();
+        $this->overThreshold = $pageCount >= $this->threshold;
+
+        // Use configured driver preference
+        $preferredDriver = $this->overThreshold ? $largeDriver : $smallDriver;
+        $this->activeDriver = $this->resolveDriver($preferredDriver);
+        $this->activeDriverName = $preferredDriver;
+
+        // Warn if over threshold but using file driver
+        if ($this->overThreshold && $this->activeDriverName === 'file') {
+            $this->logThresholdWarning($pageCount);
         }
     }
 
-    private function countPages(): int
+    private function resolveDriver(string $name): ContentDriver
     {
-        // Always use file driver count as the source of truth
-        // since FileDriver is the starting point and Hybrid also manages files
-        return $this->fileDriver->count();
+        return match ($name) {
+            'file' => $this->fileDriver,
+            'hybrid' => $this->hybridDriver,
+            'db' => $this->dbDriver ?? $this->hybridDriver,
+            default => $this->fileDriver,
+        };
+    }
+
+    private function logThresholdWarning(int $pageCount): void
+    {
+        $logger = app('logger');
+        $logger?->warning(
+            "AutoDriver: {$pageCount} pages exceeds threshold ({$this->threshold}). " .
+            "Consider migrating: ./velvet content:migrate hybrid"
+        );
     }
 
     public function getActiveDriver(): ContentDriver
@@ -57,11 +73,12 @@ class AutoDriver implements ContentDriver
 
     public function getActiveDriverName(): string
     {
-        return match (true) {
-            $this->activeDriver instanceof FileDriver => 'file',
-            $this->activeDriver instanceof HybridDriver => 'hybrid',
-            default => 'unknown',
-        };
+        return $this->activeDriverName;
+    }
+
+    public function isOverThreshold(): bool
+    {
+        return $this->overThreshold;
     }
 
     public function load(string $slug): Page
@@ -71,34 +88,17 @@ class AutoDriver implements ContentDriver
 
     public function save(Page $page): bool
     {
-        $result = $this->activeDriver->save($page);
-        $this->forceNextEvaluation = true;
-
-        $this->determineActiveDriver();
-
-        return $result;
+        return $this->activeDriver->save($page);
     }
 
     public function list(array $filters = []): Collection
     {
-        $collection = $this->activeDriver->list($filters);
-
-        if ($filters === []) {
-            $this->forceNextEvaluation = false;
-            $this->lastKnownCount = $collection->count();
-        }
-
-        return $collection;
+        return $this->activeDriver->list($filters);
     }
 
     public function delete(string $slug): bool
     {
-        $result = $this->activeDriver->delete($slug);
-        $this->forceNextEvaluation = true;
-
-        $this->determineActiveDriver();
-
-        return $result;
+        return $this->activeDriver->delete($slug);
     }
 
     public function exists(string $slug): bool
@@ -111,18 +111,8 @@ class AutoDriver implements ContentDriver
         return $this->activeDriver->paginate($page, $perPage, $filters);
     }
 
-    /**
-     * Count pages
-     */
     public function count(array $filters = []): int
     {
-        if ($filters === []) {
-            // Get fresh count from the active driver
-            $count = $this->activeDriver->count();
-            $this->lastKnownCount = $count;
-            return $count;
-        }
-
         return $this->activeDriver->count($filters);
     }
 }

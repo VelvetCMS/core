@@ -33,7 +33,20 @@ final class AutoDriverTest extends TestCase
         ]);
     }
 
-    private function makeAutoDriver(int $threshold = 1): AutoDriver
+    private function makeFileDriver(): FileDriver
+    {
+        $cache = new FileCache([
+            'path' => $this->tmpDir . '/cache',
+            'prefix' => 'test',
+        ]);
+        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
+        $parser = new ContentParser($cache, $commonMark);
+        $contentPath = $this->tmpDir . '/content/pages';
+
+        return new FileDriver($parser, $contentPath);
+    }
+
+    private function makeHybridDriver(): HybridDriver
     {
         $cache = new FileCache([
             'path' => $this->tmpDir . '/cache',
@@ -44,59 +57,82 @@ final class AutoDriverTest extends TestCase
         $conn = $this->makeConnection();
         $contentPath = $this->tmpDir . '/content/pages';
 
-        return new AutoDriver(
-            new FileDriver($parser, $contentPath),
-            new HybridDriver($parser, $conn, $contentPath),
-            $threshold
-        );
+        return new HybridDriver($parser, $conn, $contentPath);
     }
 
-    public function test_switches_to_hybrid_after_threshold(): void
+    private function makeAutoDriver(int $threshold = 5, ?int $existingPages = null): AutoDriver
     {
-        $driver = $this->makeAutoDriver(1);
+        $fileDriver = $this->makeFileDriver();
 
-        // First save triggers evaluation and hits threshold -> hybrid
-        $driver->save(new Page('one', 'One', 'File content'));
-        $this->assertSame('hybrid', $driver->getActiveDriverName());
+        // Pre-populate pages if specified (to test boot-time selection)
+        if ($existingPages !== null) {
+            for ($i = 1; $i <= $existingPages; $i++) {
+                $page = new Page(
+                    slug: "existing-{$i}",
+                    title: "Existing {$i}",
+                    content: "Content {$i}",
+                    status: 'published'
+                );
+                $fileDriver->save($page);
+            }
+        }
 
-        // Subsequent saves stay on hybrid
-        $driver->save(new Page('two', 'Two', 'Db content'));
-        $this->assertSame('hybrid', $driver->getActiveDriverName());
+        // Create fresh FileDriver for AutoDriver (so it sees the files)
+        $freshFileDriver = $this->makeFileDriver();
+        $hybridDriver = $this->makeHybridDriver();
 
-        $loaded = $driver->load('two');
-        $this->assertSame('Two', $loaded->title);
+        return new AutoDriver($freshFileDriver, $hybridDriver, null, $threshold);
     }
 
-    public function test_uses_file_driver_when_below_threshold(): void
+    public function test_uses_file_driver_when_below_threshold_at_boot(): void
     {
-        $driver = $this->makeAutoDriver(5);
+        $driver = $this->makeAutoDriver(threshold: 5, existingPages: 3);
 
-        // Create 3 pages (below threshold of 5)
-        for ($i = 1; $i <= 3; $i++) {
+        $this->assertSame('file', $driver->getActiveDriverName());
+        $this->assertFalse($driver->isOverThreshold());
+    }
+
+    public function test_uses_hybrid_driver_when_at_threshold_at_boot(): void
+    {
+        $driver = $this->makeAutoDriver(threshold: 5, existingPages: 5);
+
+        $this->assertSame('hybrid', $driver->getActiveDriverName());
+        $this->assertTrue($driver->isOverThreshold());
+    }
+
+    public function test_uses_hybrid_driver_when_above_threshold_at_boot(): void
+    {
+        $driver = $this->makeAutoDriver(threshold: 5, existingPages: 10);
+
+        $this->assertSame('hybrid', $driver->getActiveDriverName());
+        $this->assertTrue($driver->isOverThreshold());
+    }
+
+    public function test_driver_does_not_switch_after_boot(): void
+    {
+        // Start below threshold
+        $driver = $this->makeAutoDriver(threshold: 5, existingPages: 2);
+        $this->assertSame('file', $driver->getActiveDriverName());
+
+        // Add pages to exceed threshold
+        for ($i = 1; $i <= 5; $i++) {
             $page = new Page(
-                slug: "page-{$i}",
-                title: "Page {$i}",
+                slug: "new-page-{$i}",
+                title: "New Page {$i}",
                 content: "Content {$i}",
                 status: 'published'
             );
             $driver->save($page);
         }
 
-        // Should be using FileDriver
+        // Should still be file driver (no runtime switching)
         $this->assertSame('file', $driver->getActiveDriverName());
-
-        // Verify files exist
-        $contentPath = $this->tmpDir . '/content/pages';
-        $this->assertFileExists($contentPath . '/page-1.md');
-        $this->assertFileExists($contentPath . '/page-2.md');
-        $this->assertFileExists($contentPath . '/page-3.md');
     }
 
-    public function test_load_works_across_driver_switch(): void
+    public function test_load_works_with_selected_driver(): void
     {
-        $driver = $this->makeAutoDriver(5);
+        $driver = $this->makeAutoDriver(threshold: 10, existingPages: 3);
 
-        // Create page with FileDriver
         $page = new Page(
             slug: 'test-page',
             title: 'Test Page',
@@ -105,19 +141,15 @@ final class AutoDriverTest extends TestCase
         );
         $driver->save($page);
 
-        $this->assertSame('file', $driver->getActiveDriverName());
-
-        // Load should work
         $loaded = $driver->load('test-page');
         $this->assertSame('Test Page', $loaded->title);
         $this->assertSame('# Test Content', $loaded->content);
     }
 
-    public function test_list_works_with_active_driver(): void
+    public function test_list_works_with_selected_driver(): void
     {
-        $driver = $this->makeAutoDriver(5);
+        $driver = $this->makeAutoDriver(threshold: 10, existingPages: 0);
 
-        // Create multiple pages
         for ($i = 1; $i <= 3; $i++) {
             $page = new Page(
                 slug: "list-page-{$i}",
@@ -129,13 +161,12 @@ final class AutoDriverTest extends TestCase
         }
 
         $pages = $driver->list(['status' => 'published']);
-
         $this->assertCount(3, $pages);
     }
 
-    public function test_delete_works_with_active_driver(): void
+    public function test_delete_works_with_selected_driver(): void
     {
-        $driver = $this->makeAutoDriver(5);
+        $driver = $this->makeAutoDriver(threshold: 10, existingPages: 0);
 
         $page = new Page(
             slug: 'delete-me',
@@ -154,7 +185,7 @@ final class AutoDriverTest extends TestCase
 
     public function test_count_reflects_current_pages(): void
     {
-        $driver = $this->makeAutoDriver(5);
+        $driver = $this->makeAutoDriver(threshold: 10, existingPages: 0);
 
         $this->assertSame(0, $driver->count());
 
@@ -169,5 +200,13 @@ final class AutoDriverTest extends TestCase
         }
 
         $this->assertSame(3, $driver->count());
+    }
+
+    public function test_empty_site_uses_file_driver(): void
+    {
+        $driver = $this->makeAutoDriver(threshold: 5, existingPages: 0);
+
+        $this->assertSame('file', $driver->getActiveDriverName());
+        $this->assertFalse($driver->isOverThreshold());
     }
 }
