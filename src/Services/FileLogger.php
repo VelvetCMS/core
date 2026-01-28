@@ -9,8 +9,11 @@ use Psr\Log\LogLevel;
 
 class FileLogger implements LoggerInterface
 {
-    private string $logPath;
+    private string $basePath;
     private string $level;
+    private bool $daily;
+    private int $maxFiles;
+    private ?string $rotationCheckedDate = null;
     
     private const LEVELS = [
         LogLevel::DEBUG => 0,
@@ -23,12 +26,18 @@ class FileLogger implements LoggerInterface
         LogLevel::EMERGENCY => 7,
     ];
     
-    public function __construct(?string $logPath = null, string $level = LogLevel::INFO)
-    {
-        $this->logPath = $logPath ?? storage_path('logs/velvet.log');
+    public function __construct(
+        ?string $logPath = null,
+        string $level = LogLevel::INFO,
+        bool $daily = false,
+        int $maxFiles = 7
+    ) {
+        $this->basePath = $logPath ?? storage_path('logs/velvet.log');
         $this->level = $level;
+        $this->daily = $daily;
+        $this->maxFiles = $maxFiles;
         
-        $dir = dirname($this->logPath);
+        $dir = dirname($this->basePath);
         if (!is_dir($dir)) {
             mkdir($dir, 0755, true);
         }
@@ -94,7 +103,52 @@ class FileLogger implements LoggerInterface
         
         $line .= "\n";
         
-        file_put_contents($this->logPath, $line, FILE_APPEND | LOCK_EX);
+        $logPath = $this->getLogPath();
+        file_put_contents($logPath, $line, FILE_APPEND | LOCK_EX);
+        
+        if ($this->daily) {
+            $this->rotateOldFiles();
+        }
+    }
+    
+    public function getLogPath(): string
+    {
+        if (!$this->daily) {
+            return $this->basePath;
+        }
+        
+        $info = pathinfo($this->basePath);
+        $date = date('Y-m-d');
+        
+        return $info['dirname'] . '/' . $info['filename'] . '-' . $date . '.' . ($info['extension'] ?? 'log');
+    }
+    
+    private function rotateOldFiles(): void
+    {
+        $today = date('Y-m-d');
+        
+        // Only check once per day per instance
+        if ($this->rotationCheckedDate === $today) {
+            return;
+        }
+        $this->rotationCheckedDate = $today;
+        
+        $info = pathinfo($this->basePath);
+        $pattern = $info['dirname'] . '/' . $info['filename'] . '-*.'. ($info['extension'] ?? 'log');
+        
+        $files = glob($pattern);
+        if ($files === false || count($files) <= $this->maxFiles) {
+            return;
+        }
+        
+        // Sort by modification time, oldest first
+        usort($files, fn($a, $b) => filemtime($a) <=> filemtime($b));
+        
+        // Delete oldest files
+        $toDelete = array_slice($files, 0, count($files) - $this->maxFiles);
+        foreach ($toDelete as $file) {
+            @unlink($file);
+        }
     }
     
     private function shouldLog(string $level): bool
@@ -138,10 +192,5 @@ class FileLogger implements LoggerInterface
             $e->getLine(),
             $trace
         );
-    }
-    
-    public function getLogPath(): string
-    {
-        return $this->logPath;
     }
 }

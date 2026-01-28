@@ -21,9 +21,12 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('events', EventDispatcher::class);
 
         $this->app->singleton('logger', function() {
-            $logPath = storage_path('logs/velvet.log');
-            $level = config('app.log_level', 'info');
-            return new \VelvetCMS\Services\FileLogger($logPath, $level);
+            return new \VelvetCMS\Services\FileLogger(
+                logPath: config('logging.path', storage_path('logs/velvet.log')),
+                level: config('logging.level', config('app.log_level', 'info')),
+                daily: config('logging.daily', false),
+                maxFiles: config('logging.max_files', 7)
+            );
         });
         $this->app->alias('logger', \Psr\Log\LoggerInterface::class);
 
