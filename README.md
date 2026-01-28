@@ -153,9 +153,9 @@ Visit `http://localhost:8000`
 Full documentation available at **[velvetcms.com/docs](https://velvetcms.com/docs)**
 
 Quick links:
-- [Getting Started](https://velvetcms.com/docs/core/getting-started/overview)
-- [Install & Bootstrap](https://velvetcms.com/docs/core/getting-started/installation)
-- [Directory Structure](https://velvetcms.com/docs/core/getting-started/directory-structure)
+- [Getting Started](https://velvetcms.com/docs/core/latest/getting-started/overview)
+- [Install & Bootstrap](https://velvetcms.com/docs/core/latest/guides/getting-started/installation)
+- [Directory Structure](https://velvetcms.com/docs/core/latest/guides/getting-started/directory-structure)
 
 ---
 
