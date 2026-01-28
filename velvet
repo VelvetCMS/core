@@ -25,7 +25,7 @@ foreach ($autoloadPaths as $path) {
 
 if (!$autoloadPath) {
     fwrite(STDERR, "Error: Composer autoloader not found.\n");
-    fwrite(STDERR, "Run: composer install\n");
+    fwrite(STDERR, "Run: composer install --no-dev \n");
     exit(1);
 }
 
@@ -111,7 +111,7 @@ if ($app) {
         $registry->register('page:list', PageListCommand::class);
         $registry->register('page:publish', PagePublishCommand::class);
         $registry->register('page:delete', PageDeleteCommand::class);
-        $registry->register('content:import', \VelvetCMS\Commands\ImportContentCommand::class);
+        $registry->register('content:migrate', \VelvetCMS\Commands\Content\MigrateContentCommand::class);
         $registry->register('migrate', MigrateCommand::class);
         $registry->register('optimize', OptimizeCommand::class);
         $registry->register('route:cache', \VelvetCMS\Commands\Route\CacheCommand::class);
