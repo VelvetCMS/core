@@ -62,7 +62,7 @@ class AutoDriver implements ContentDriver
         $logger = app('logger');
         $logger?->warning(
             "AutoDriver: {$pageCount} pages exceeds threshold ({$this->threshold}). " .
-            "Consider migrating: ./velvet content:migrate hybrid"
+            'Consider migrating: ./velvet content:migrate hybrid'
         );
     }
 

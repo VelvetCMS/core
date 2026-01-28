@@ -106,6 +106,7 @@ class MigrateContentCommand extends Command
                 $this->makeConnection(),
                 $contentPath
             ),
+            default => throw new \InvalidArgumentException("Unknown driver: {$name}"),
         };
     }
 
@@ -127,12 +128,12 @@ class MigrateContentCommand extends Command
             if (str_contains($e->getMessage(), 'no such table')) {
                 throw new \RuntimeException(
                     "Database table 'pages' does not exist.\n" .
-                    "Run: ./velvet migrate"
+                    'Run: ./velvet migrate'
                 );
             }
             throw new \RuntimeException(
                 "Database connection failed: {$e->getMessage()}\n" .
-                "Check config/db.php settings."
+                'Check config/db.php settings.'
             );
         }
     }

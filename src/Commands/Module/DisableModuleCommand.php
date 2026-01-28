@@ -6,7 +6,6 @@ namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
 use VelvetCMS\Core\Application;
-use VelvetCMS\Core\ModuleManager;
 
 class DisableModuleCommand extends Command
 {
