@@ -423,4 +423,76 @@ final class ValidatorTest extends TestCase
             $this->assertArrayHasKey('age', $errors);
         }
     }
+    
+    // === Custom Extensions ===
+    
+    public function test_extend_with_boolean_return(): void
+    {
+        Validator::extend('lowercase', fn($value) => $value === strtolower($value));
+        
+        $validated = Validator::make(
+            ['name' => 'hello'],
+            ['name' => 'lowercase']
+        )->validate();
+        
+        $this->assertSame('hello', $validated['name']);
+    }
+    
+    public function test_extend_fails_with_false(): void
+    {
+        Validator::extend('lowercase', fn($value) => $value === strtolower($value));
+        
+        $this->expectException(ValidationException::class);
+        Validator::make(['name' => 'HELLO'], ['name' => 'lowercase'])->validate();
+    }
+    
+    public function test_extend_with_custom_message(): void
+    {
+        Validator::extend('slug', function($value, $parameter, $data, $field) {
+            if (!preg_match('/^[a-z0-9-]+$/', $value)) {
+                return "The {$field} must be a valid slug (lowercase letters, numbers, hyphens).";
+            }
+            return true;
+        });
+        
+        try {
+            Validator::make(['url' => 'Not A Slug!'], ['url' => 'slug'])->validate();
+            $this->fail('Expected ValidationException');
+        } catch (ValidationException $e) {
+            $this->assertStringContainsString('valid slug', $e->getErrors()['url'][0]);
+        }
+    }
+    
+    public function test_extend_with_parameter(): void
+    {
+        Validator::extend('divisible', fn($value, $param) => $value % (int)$param === 0);
+        
+        $validated = Validator::make(['num' => 10], ['num' => 'divisible:5'])->validate();
+        $this->assertSame(10, $validated['num']);
+        
+        $this->expectException(ValidationException::class);
+        Validator::make(['num' => 7], ['num' => 'divisible:3'])->validate();
+    }
+    
+    public function test_extend_can_access_other_fields(): void
+    {
+        Validator::extend('greater_than', function($value, $param, $data) {
+            return $value > ($data[$param] ?? 0);
+        });
+        
+        $validated = Validator::make(
+            ['min' => 5, 'max' => 10],
+            ['max' => 'greater_than:min']
+        )->validate();
+        
+        $this->assertSame(10, $validated['max']);
+    }
+    
+    public function test_has_extension(): void
+    {
+        Validator::extend('custom_rule', fn() => true);
+        
+        $this->assertTrue(Validator::hasExtension('custom_rule'));
+        $this->assertFalse(Validator::hasExtension('nonexistent'));
+    }
 }
