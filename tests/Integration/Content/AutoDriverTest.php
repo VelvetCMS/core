@@ -47,7 +47,6 @@ final class AutoDriverTest extends TestCase
         return new AutoDriver(
             new FileDriver($parser, $contentPath),
             new HybridDriver($parser, $conn, $contentPath),
-            $conn,
             $threshold
         );
     }
