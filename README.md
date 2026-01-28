@@ -73,6 +73,7 @@ We reject the "magic" that plagues modern PHP. We believe you should be able to 
   - **Standalone Validator**: reuse validation logic anywhere (CLI, API, Imports).
   - **Rich Rule Set**: `required`, `email`, `url`, `min`, `max`, `regex`, `numeric`, `integer`, `boolean`, `alpha`, `alphanumeric`, `in`, `same`, `different`, `date`, `array`.
   - **Fluent API**: `Validator::make($data, $rules)->validate()`.
+  - **Custom Rules**: `Validator::extend('slug', fn($value) => ...)` for project-specific validation.
 - **View Engine**: Lightweight yet powerful templating system featuring:
   - Blade-like syntax (`{{ }}`, `{!! !!}`)
   - Control structures (`@if`, `@foreach`)
@@ -96,7 +97,10 @@ We reject the "magic" that plagues modern PHP. We believe you should be able to 
   - **Custom Handler**: Centralized error handling and reporting.
   - **HTTP Exceptions**: Specialized exceptions for 404, 403, 500, etc.
   - **Renderable Exceptions**: Exceptions that can render their own response.
-- **Logging**: PSR-3 compliant file logger with support for multiple log levels (Debug to Emergency).
+- **Logging**:
+  - **PSR-3 Compliant**: Standard `LoggerInterface` with all log levels.
+  - **Daily Rotation**: Optional dated log files (`velvet-2026-01-28.log`).
+  - **Auto Cleanup**: Configurable `max_files` to prevent disk bloat.
 
 ### System & Scheduling
 - **Task Scheduler**: Cron-style task scheduling defined in PHP.

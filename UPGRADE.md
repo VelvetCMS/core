@@ -1,5 +1,44 @@
 # Upgrade Guide
 
+## 1.4.0
+
+### Logging
+
+FileLogger now supports daily rotation and automatic cleanup.
+
+**New config** (`config/logging.php`):
+```php
+'logging' => [
+    'path' => storage_path('logs/velvet.log'),
+    'level' => 'info',
+    'daily' => true,       // Creates velvet-2026-01-28.log
+    'max_files' => 14,     // Keep 2 weeks
+],
+```
+
+Old `app.log_level` config still works as fallback.
+
+### Validation
+
+Custom validation rules via `Validator::extend()`.
+
+```php
+// Register a custom rule
+Validator::extend('slug', function($value, $parameter, $data, $field) {
+    if (!preg_match('/^[a-z0-9-]+$/', $value)) {
+        return "The {$field} must be a valid slug.";
+    }
+    return true;
+});
+
+// Use it
+Validator::make($data, ['url' => 'required|slug'])->validate();
+```
+
+Return `true` if valid, `false` for generic error, or a string for custom message.
+
+---
+
 ## 1.3.0
 
 ### Rate Limiting
