@@ -1,5 +1,34 @@
 # Upgrade Guide
 
+## 1.5.0
+
+### AutoDriver behavior change
+
+AutoDriver no longer switches drivers at runtime. It now evaluates once at boot and stays on that driver for the entire request lifecycle. This prevents mid-request inconsistencies.
+
+If you relied on automatic switching, manually migrate content when ready:
+
+```bash
+./velvet content:migrate hybrid
+```
+
+### New `content:migrate` command
+
+Replaces the old `content:import` command with full bidirectional support:
+
+```bash
+./velvet content:migrate hybrid           # file -> hybrid
+./velvet content:migrate db --from=file   # file -> db
+./velvet content:migrate file --from=db   # db -> file
+./velvet content:migrate db --dry-run     # Preview changes
+```
+
+### Removed
+
+- `content:import` command (use `content:migrate db` instead)
+
+---
+
 ## 1.4.0
 
 ### Logging

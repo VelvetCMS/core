@@ -21,6 +21,7 @@ We call it **Pragmatic Zero Magic**. You should be able to trace every part of y
 - **Pragmatic Convenience**: Autowiring is available for your controllers and commands, but it's a tool, not a crutch.
 - **No Facades**: No static proxies hiding dependencies. Standard injection and clear helpers.
 - **Content First**: Drivers, caching, and routing are optimized for publishing, not generic "web apps".
+- **Lean by Design**: <15k LoC (excluding tests), 4 runtime dependencies. Full feature set without the bloat.
 
 ---
 
@@ -39,7 +40,7 @@ We call it **Pragmatic Zero Magic**. You should be able to trace every part of y
   | **File** | Small sites, simple setup | Markdown files |
   | **DB** | Large sites, complex queries | Database only |
   | **Hybrid** | Best of both | Markdown + DB metadata |
-  | **Auto** | Automatic switching | Starts File, switches to Hybrid at 100 pages - configurable! |
+  | **Auto** | Adaptive selection | Picks driver at boot based on page count |
 - **Fluent Query Builder**: Expressive database abstraction layer supporting complex queries, joins, raw expressions, and automatic caching.
 - **Schema Builder & Migrations**:
   - **Database Agnostic**: Write schemas once, run on SQLite, MySQL, or PostgreSQL.
@@ -135,7 +136,7 @@ We call it **Pragmatic Zero Magic**. You should be able to trace every part of y
 # Clone and install
 git clone https://github.com/VelvetCMS/core.git
 cd core
-composer install
+composer install --no-dev
 
 # Bootstrap
 ./velvet install
@@ -153,9 +154,9 @@ Visit `http://localhost:8000`
 Full documentation available at **[velvetcms.com/docs](https://velvetcms.com/docs)**
 
 Quick links:
-- [Getting Started](https://velvetcms.com/docs/core/latest/getting-started/overview)
-- [Install & Bootstrap](https://velvetcms.com/docs/core/latest/guides/getting-started/installation)
-- [Directory Structure](https://velvetcms.com/docs/core/latest/guides/getting-started/directory-structure)
+- [Getting Started](https://velvetcms.com/docs/core/latest/guides/getting-started/overview)
+- [Install Guide](https://velvetcms.com/docs/core/latest/guides/getting-started/installation)
+- [Architecture Overview](https://velvetcms.com/docs/core/latest/guides/architecture/overview)
 
 ---
 
