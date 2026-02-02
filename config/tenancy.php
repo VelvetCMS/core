@@ -50,4 +50,34 @@ return [
         'user_root' => 'user/tenants',
         'storage_root' => 'storage/tenants',
     ],
+
+    /**
+     * Database-per-tenant configuration
+     *
+     * When enabled, each tenant gets its own database connection.
+     * This provides true data isolation between tenants.
+     */
+    'database' => [
+        /** Enable database-per-tenant mode */
+        'enabled' => env('TENANCY_DB_ENABLED', false),
+
+        /**
+         * Database name pattern ({tenant} replaced with tenant id)
+         * Used when no explicit mapping exists for a tenant
+         */
+        'pattern' => env('TENANCY_DB_PATTERN', 'velvet_{tenant}'),
+
+        /**
+         * Explicit tenant-to-database mapping
+         * Can be a connection name (string) or full connection config (array)
+         *
+         * Examples:
+         *   'tenant-a' => 'mysql_tenant_a',           // Use named connection
+         *   'tenant-b' => ['database' => 'custom'],   // Override specific values
+         */
+        'map' => [
+            // 'tenant-id' => 'connection-name',
+            // 'tenant-id' => ['database' => 'custom_db'],
+        ],
+    ],
 ];

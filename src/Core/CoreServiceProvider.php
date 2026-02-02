@@ -80,6 +80,10 @@ class CoreServiceProvider extends ServiceProvider
                 throw new \RuntimeException('Database configuration not found.');
             }
 
+            if (tenant_enabled() && tenant_id() !== null) {
+                $config = $this->resolveTenantDatabase(tenant_id(), $config);
+            }
+
             return new \VelvetCMS\Database\Connection($config);
         });
         $this->app->alias('db', \VelvetCMS\Database\Connection::class);
@@ -196,5 +200,47 @@ class CoreServiceProvider extends ServiceProvider
                 $controller->run();
             });
         }
+    }
+
+    private function resolveTenantDatabase(string $tenantId, array $config): array
+    {
+        $tenancyConfig = \VelvetCMS\Core\Tenancy\TenancyManager::config();
+        $dbConfig = $tenancyConfig['database'] ?? [];
+
+        if (empty($dbConfig['enabled'])) {
+            return $config;
+        }
+
+        $map = $dbConfig['map'] ?? [];
+        if (isset($map[$tenantId])) {
+            $mapped = $map[$tenantId];
+
+            if (is_string($mapped)) {
+                if (isset($config['connections'][$mapped])) {
+                    $config['default'] = $mapped;
+                    return $config;
+                }
+                throw new \RuntimeException("Tenant '{$tenantId}' mapped to unknown connection '{$mapped}'.");
+            }
+
+            if (is_array($mapped)) {
+                $defaultConnection = $config['default'];
+                $config['connections'][$defaultConnection] = array_merge(
+                    $config['connections'][$defaultConnection] ?? [],
+                    $mapped
+                );
+                return $config;
+            }
+        }
+
+        $pattern = $dbConfig['pattern'] ?? 'velvet_{tenant}';
+        $dbName = str_replace('{tenant}', $tenantId, $pattern);
+
+        $defaultConnection = $config['default'];
+        if (isset($config['connections'][$defaultConnection])) {
+            $config['connections'][$defaultConnection]['database'] = $dbName;
+        }
+
+        return $config;
     }
 }
