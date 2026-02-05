@@ -19,6 +19,8 @@ class ViewEngine
     private array $sections = [];
     private array $sectionStack = [];
     private ?string $extends = null;
+    private array $stacks = [];
+    private array $directives = [];
 
     public function __construct(?string $userPath = null, ?string $cachePath = null)
     {
@@ -48,10 +50,16 @@ class ViewEngine
         $this->shared[$key] = $value;
     }
 
+    public function directive(string $name, callable $compiler): void
+    {
+        $this->directives[$name] = $compiler;
+    }
+
     public function render(string $view, array $data = []): string
     {
         $this->sections = [];
         $this->sectionStack = [];
+        $this->stacks = [];
         $this->extends = null;
 
         return $this->renderPartial($view, $data);
@@ -225,6 +233,52 @@ class ViewEngine
         $content = preg_replace('/@csrf/', '<?php echo csrf_field(); ?>', $content);
         $content = preg_replace('/@method\s*\(\s*[\'"](.+?)[\'"]\s*\)/', '<?php echo method_field(\'$1\'); ?>', $content);
 
+        // @push / @endpush / @stack
+        $content = preg_replace_callback(
+            '/@push\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            fn ($m) => "<?php \$__engine->startPush('{$m[1]}'); ?>",
+            $content
+        );
+        $content = preg_replace('/@endpush/', '<?php $__engine->endPush(); ?>', $content);
+        $content = preg_replace_callback(
+            '/@stack\s*\(\s*[\'"](.+?)[\'"]\s*\)/',
+            fn ($m) => "<?php echo \$__engine->yieldStack('{$m[1]}'); ?>",
+            $content
+        );
+
+        // @isset / @endisset
+        $content = preg_replace_callback(
+            '/@isset\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            fn ($m) => '<?php if (isset(' . $m[1] . ')): ?>',
+            $content
+        );
+        $content = preg_replace('/@endisset/', '<?php endif; ?>', $content);
+
+        // @empty / @endempty
+        $content = preg_replace_callback(
+            '/@empty\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            fn ($m) => '<?php if (empty(' . $m[1] . ')): ?>',
+            $content
+        );
+        $content = preg_replace('/@endempty/', '<?php endif; ?>', $content);
+
+        // @unless / @endunless
+        $content = preg_replace_callback(
+            '/@unless\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            fn ($m) => '<?php if (!(' . $m[1] . ')): ?>',
+            $content
+        );
+        $content = preg_replace('/@endunless/', '<?php endif; ?>', $content);
+
+        // Custom directives
+        foreach ($this->directives as $name => $compiler) {
+            $content = preg_replace_callback(
+                '/@' . preg_quote($name, '/') . '\s*\(((?:[^()]|\([^()]*\))*)\)/',
+                fn ($m) => $compiler($m[1]),
+                $content
+            );
+        }
+
         return $content;
     }
 
@@ -273,7 +327,7 @@ class ViewEngine
 
     public function startSection(string $name): void
     {
-        $this->sectionStack[] = $name;
+        $this->sectionStack[] = ['type' => 'section', 'name' => $name];
         ob_start();
     }
 
@@ -282,12 +336,47 @@ class ViewEngine
         if (empty($this->sectionStack)) {
             throw new \RuntimeException('@endsection without @section');
         }
-        $this->sections[array_pop($this->sectionStack)] = ob_get_clean();
+
+        $entry = array_pop($this->sectionStack);
+        if ($entry['type'] !== 'section') {
+            throw new \RuntimeException('@endsection without matching @section');
+        }
+
+        $this->sections[$entry['name']] = ob_get_clean();
     }
 
     public function yieldSection(string $name, string $default = ''): string
     {
         return $this->sections[$name] ?? $default;
+    }
+
+    public function startPush(string $name): void
+    {
+        $this->sectionStack[] = ['type' => 'push', 'name' => $name];
+        ob_start();
+    }
+
+    public function endPush(): void
+    {
+        if (empty($this->sectionStack)) {
+            throw new \RuntimeException('@endpush without @push');
+        }
+
+        $entry = array_pop($this->sectionStack);
+        if ($entry['type'] !== 'push') {
+            throw new \RuntimeException('@endpush without matching @push');
+        }
+
+        $this->stacks[$entry['name']][] = ob_get_clean();
+    }
+
+    public function yieldStack(string $name): string
+    {
+        if (!isset($this->stacks[$name])) {
+            return '';
+        }
+
+        return implode("\n", $this->stacks[$name]);
     }
 
     public function clearCache(): void

@@ -384,4 +384,203 @@ final class ViewEngineTest extends TestCase
         $this->assertStringContainsString('_method', $output);
         $this->assertStringContainsString('PUT', $output);
     }
+
+    // === Push/Stack ===
+
+    public function test_push_and_stack(): void
+    {
+        $this->mkdir($this->viewDir . '/layouts');
+        file_put_contents(
+            $this->viewDir . '/layouts/app.velvet.php',
+            "<head>@stack('styles')</head><body>{{ \$content }}@stack('scripts')</body>"
+        );
+        file_put_contents(
+            $this->viewDir . '/page.velvet.php',
+            "@extends('layouts.app')@push('styles')<link rel=\"stylesheet\" href=\"/page.css\">@endpush@push('scripts')<script src=\"/page.js\"></script>@endpush Content"
+        );
+
+        $output = $this->engine->render('page');
+
+        $this->assertStringContainsString('<head><link rel="stylesheet" href="/page.css"></head>', $output);
+        $this->assertStringContainsString('<script src="/page.js"></script></body>', $output);
+        $this->assertStringContainsString('Content', $output);
+    }
+
+    public function test_multiple_pushes_to_same_stack(): void
+    {
+        $this->mkdir($this->viewDir . '/layouts');
+        file_put_contents(
+            $this->viewDir . '/layouts/base.velvet.php',
+            "@stack('scripts')"
+        );
+        file_put_contents(
+            $this->viewDir . '/multi.velvet.php',
+            "@extends('layouts.base')@push('scripts')A@endpush@push('scripts')B@endpush"
+        );
+
+        $output = $this->engine->render('multi');
+
+        $this->assertSame("A\nB", $output);
+    }
+
+    public function test_empty_stack_outputs_nothing(): void
+    {
+        file_put_contents($this->viewDir . '/empty-stack.velvet.php', "before@stack('nothing')after");
+
+        $output = $this->engine->render('empty-stack');
+
+        $this->assertSame('beforeafter', $output);
+    }
+
+    // === Isset/Empty/Unless ===
+
+    public function test_isset_directive(): void
+    {
+        file_put_contents($this->viewDir . '/isset.velvet.php', '@isset($name)Hello {{ $name }}@endisset');
+
+        $this->assertSame('Hello World', $this->engine->render('isset', ['name' => 'World']));
+        $this->assertSame('', $this->engine->render('isset', []));
+    }
+
+    public function test_empty_directive(): void
+    {
+        file_put_contents($this->viewDir . '/empty.velvet.php', '@empty($items)No items@endempty');
+
+        $this->assertSame('No items', $this->engine->render('empty', ['items' => []]));
+        $this->assertSame('', $this->engine->render('empty', ['items' => ['a']]));
+    }
+
+    public function test_unless_directive(): void
+    {
+        file_put_contents($this->viewDir . '/unless.velvet.php', '@unless($hidden)Visible@endunless');
+
+        $this->assertSame('Visible', $this->engine->render('unless', ['hidden' => false]));
+        $this->assertSame('', $this->engine->render('unless', ['hidden' => true]));
+    }
+
+    // === Custom Directives ===
+
+    public function test_custom_directive(): void
+    {
+        $this->engine->directive('upper', fn ($expr) => "<?php echo strtoupper({$expr}); ?>");
+        file_put_contents($this->viewDir . '/custom.velvet.php', '@upper($name)');
+
+        $output = $this->engine->render('custom', ['name' => 'velvet']);
+
+        $this->assertSame('VELVET', $output);
+    }
+
+    public function test_custom_directive_with_multiple_arguments(): void
+    {
+        $this->engine->directive('repeat', fn ($expr) => "<?php echo str_repeat({$expr}); ?>");
+        file_put_contents($this->viewDir . '/repeat.velvet.php', "@repeat('x', 3)");
+
+        $output = $this->engine->render('repeat');
+
+        $this->assertSame('xxx', $output);
+    }
+
+    // === Error Handling ===
+
+    public function test_endpush_without_push_throws(): void
+    {
+        file_put_contents($this->viewDir . '/bad-endpush.velvet.php', '@endpush');
+
+        try {
+            $this->engine->render('bad-endpush');
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (RuntimeException $e) {
+            $this->assertSame('@endpush without @push', $e->getMessage());
+        } finally {
+            while (ob_get_level() > 1) {
+                ob_end_clean();
+            }
+        }
+    }
+
+    public function test_endsection_without_section_throws(): void
+    {
+        file_put_contents($this->viewDir . '/bad-endsection.velvet.php', '@endsection');
+
+        try {
+            $this->engine->render('bad-endsection');
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (RuntimeException $e) {
+            $this->assertSame('@endsection without @section', $e->getMessage());
+        } finally {
+            while (ob_get_level() > 1) {
+                ob_end_clean();
+            }
+        }
+    }
+
+    public function test_mismatched_section_and_push_throws(): void
+    {
+        file_put_contents(
+            $this->viewDir . '/mismatch.velvet.php',
+            "@section('content')@endpush"
+        );
+
+        try {
+            $this->engine->render('mismatch');
+            $this->fail('Expected RuntimeException was not thrown');
+        } catch (RuntimeException $e) {
+            $this->assertSame('@endpush without matching @push', $e->getMessage());
+        } finally {
+            while (ob_get_level() > 1) {
+                ob_end_clean();
+            }
+        }
+    }
+
+    // === Nested Expressions ===
+
+    public function test_isset_with_array_access(): void
+    {
+        file_put_contents($this->viewDir . '/isset-array.velvet.php', '@isset($data["key"]){{ $data["key"] }}@endisset');
+
+        $this->assertSame('value', $this->engine->render('isset-array', ['data' => ['key' => 'value']]));
+        $this->assertSame('', $this->engine->render('isset-array', ['data' => []]));
+    }
+
+    public function test_empty_with_method_call(): void
+    {
+        file_put_contents($this->viewDir . '/empty-method.velvet.php', '@empty($obj->items())Empty@endempty');
+
+        $obj = new class {
+            public function items(): array { return []; }
+        };
+        $this->assertSame('Empty', $this->engine->render('empty-method', ['obj' => $obj]));
+
+        $obj2 = new class {
+            public function items(): array { return ['a']; }
+        };
+        $this->assertSame('', $this->engine->render('empty-method', ['obj' => $obj2]));
+    }
+
+    // === Push from Partials ===
+
+    public function test_push_from_included_partial(): void
+    {
+        $this->mkdir($this->viewDir . '/layouts');
+        $this->mkdir($this->viewDir . '/partials');
+
+        file_put_contents(
+            $this->viewDir . '/layouts/main.velvet.php',
+            "<head>@stack('scripts')</head>@yield('content')"
+        );
+        file_put_contents(
+            $this->viewDir . '/partials/widget.velvet.php',
+            "@push('scripts')<script src=\"/widget.js\"></script>@endpush<div>Widget</div>"
+        );
+        file_put_contents(
+            $this->viewDir . '/page-with-partial.velvet.php',
+            "@extends('layouts.main')@section('content')@include('partials.widget')@endsection"
+        );
+
+        $output = $this->engine->render('page-with-partial');
+
+        $this->assertStringContainsString('<script src="/widget.js"></script>', $output);
+        $this->assertStringContainsString('<div>Widget</div>', $output);
+    }
 }
