@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Http\Middleware;
 
 use Throwable;
+use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Exceptions\ExceptionHandlerInterface;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;

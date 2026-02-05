@@ -6,6 +6,7 @@ namespace VelvetCMS\Http\Middleware;
 
 use Closure;
 use InvalidArgumentException;
+use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;

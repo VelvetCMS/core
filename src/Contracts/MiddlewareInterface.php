@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace VelvetCMS\Http\Middleware;
+namespace VelvetCMS\Contracts;
 
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;

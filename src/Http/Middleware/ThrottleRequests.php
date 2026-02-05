@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Http\Middleware;
 
+use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Http\RateLimiting\Limit;
 use VelvetCMS\Http\RateLimiting\RateLimiter;
 use VelvetCMS\Http\Request;

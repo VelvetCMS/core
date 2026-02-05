@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Http\Middleware;
 
+use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Http;
 
-use VelvetCMS\Http\Middleware\MiddlewareInterface;
+use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Http\Middleware\Pipeline;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
