@@ -9,7 +9,7 @@ return [
     /** Paths to scan for modules (supports glob patterns) */
     'paths' => [
         base_path('user/modules/*'),
-        base_path('../VelvetCMS-*'),
+        base_path('../VelvetCMS*'),
     ],
 
     /** Tenant-local module paths (supports {tenant} placeholder) */
