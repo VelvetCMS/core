@@ -46,6 +46,13 @@ All code style and PHPDoc guidance lives in [CODING_STANDARDS.md](CODING_STANDAR
 2. Update docs when behavior changes.
 3. Run `composer qa` before pushing (style + static analysis).
 
+## LLM / AI Usage
+
+We use LLMs as development tools and encourage contributors to do the same. They're great for accelerating work you already understand.
+
+That said: if you don't know anything about what you're trying to achieve and want to delegate 100% of the task - including all decision-making - to an LLM, **don't**. 
+You are responsible for every line you submit. If you can't explain it, defend it in review, or debug it when it breaks, it shouldn't be in your PR.
+
 ## Security
 
 For security reports, see [SECURITY.md](SECURITY.md). Do not open public issues for vulnerabilities.
