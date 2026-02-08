@@ -24,6 +24,9 @@ class Router
     private int $routeCounter = 0;
     private ?int $lastRouteId = null;
 
+    /** @var array{prefix: string, middleware: array<int, string|callable>}[] */
+    private array $groupStack = [];
+
     public function __construct(
         private readonly EventDispatcher $events
     ) {
@@ -64,10 +67,51 @@ class Router
         return $this->addRoute(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], $path, $handler, $name);
     }
 
+    /** @param array{prefix?: string, middleware?: string|array<int, string|callable>} $attributes */
+    public function group(array $attributes, callable $callback): void
+    {
+        $this->groupStack[] = [
+            'prefix' => $attributes['prefix'] ?? '',
+            'middleware' => isset($attributes['middleware'])
+                ? (is_array($attributes['middleware']) ? $attributes['middleware'] : [$attributes['middleware']])
+                : [],
+        ];
+
+        $callback($this);
+
+        array_pop($this->groupStack);
+    }
+
+    private function resolveGroupPrefix(): string
+    {
+        $prefix = '';
+        foreach ($this->groupStack as $group) {
+            if ($group['prefix'] !== '') {
+                $prefix .= '/' . trim($group['prefix'], '/');
+            }
+        }
+        return $prefix;
+    }
+
+    /** @return array<int, string|callable> */
+    private function resolveGroupMiddleware(): array
+    {
+        $middleware = [];
+        foreach ($this->groupStack as $group) {
+            $middleware = array_merge($middleware, $group['middleware']);
+        }
+        return $middleware;
+    }
+
     private function addRoute(string|array $methods, string $path, callable|array $handler, ?string $name = null): RouteDefinition
     {
         $methods = array_map('strtoupper', (array) $methods);
+
+        $prefix = $this->resolveGroupPrefix();
+        $path = $prefix . '/' . ltrim($path, '/');
+
         $pattern = $this->compilePattern($path);
+        $groupMiddleware = $this->resolveGroupMiddleware();
 
         $routeId = ++$this->routeCounter;
 
@@ -77,7 +121,7 @@ class Router
             path: $path,
             pattern: $pattern,
             handler: $handler,
-            middleware: [],
+            middleware: $groupMiddleware,
             name: $name,
         );
 
