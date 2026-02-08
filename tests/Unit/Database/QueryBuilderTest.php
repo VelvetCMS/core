@@ -444,4 +444,121 @@ final class QueryBuilderTest extends TestCase
         $this->assertContains('Pluck1', $names->all());
         $this->assertContains('Pluck2', $names->all());
     }
+
+    // === Pagination Tests ===
+
+    public function test_paginate_returns_correct_structure(): void
+    {
+        for ($i = 1; $i <= 10; $i++) {
+            $this->builder()->table('users')->insert([
+                'name' => "User{$i}",
+                'email' => "page{$i}@test.com",
+            ]);
+        }
+
+        $result = $this->builder()->table('users')->paginate(3, 1);
+
+        $this->assertArrayHasKey('data', $result);
+        $this->assertArrayHasKey('total', $result);
+        $this->assertArrayHasKey('per_page', $result);
+        $this->assertArrayHasKey('current_page', $result);
+        $this->assertArrayHasKey('last_page', $result);
+
+        $this->assertSame(3, $result['per_page']);
+        $this->assertSame(1, $result['current_page']);
+        $this->assertSame(10, $result['total']);
+        $this->assertSame(4, $result['last_page']);
+        $this->assertCount(3, $result['data']->all());
+    }
+
+    public function test_paginate_second_page(): void
+    {
+        for ($i = 1; $i <= 5; $i++) {
+            $this->builder()->table('users')->insert([
+                'name' => "PgUser{$i}",
+                'email' => "pg{$i}@test.com",
+            ]);
+        }
+
+        $result = $this->builder()->table('users')->paginate(2, 2);
+
+        $this->assertSame(2, $result['current_page']);
+        $this->assertSame(3, $result['last_page']);
+        $this->assertCount(2, $result['data']->all());
+    }
+
+    public function test_paginate_last_page_partial(): void
+    {
+        for ($i = 1; $i <= 7; $i++) {
+            $this->builder()->table('users')->insert([
+                'name' => "Last{$i}",
+                'email' => "last{$i}@test.com",
+            ]);
+        }
+
+        $result = $this->builder()->table('users')->paginate(3, 3);
+
+        $this->assertSame(3, $result['current_page']);
+        $this->assertSame(3, $result['last_page']);
+        $this->assertCount(1, $result['data']->all());
+    }
+
+    public function test_paginate_empty_table(): void
+    {
+        $result = $this->builder()->table('posts')->paginate(10, 1);
+
+        $this->assertSame(0, $result['total']);
+        $this->assertSame(1, $result['last_page']);
+        $this->assertSame(1, $result['current_page']);
+        $this->assertCount(0, $result['data']->all());
+    }
+
+    public function test_paginate_with_where_clause(): void
+    {
+        for ($i = 1; $i <= 6; $i++) {
+            $this->builder()->table('users')->insert([
+                'name' => "Filtered{$i}",
+                'email' => "filter{$i}@test.com",
+                'status' => $i <= 4 ? 'active' : 'inactive',
+            ]);
+        }
+
+        $result = $this->builder()
+            ->table('users')
+            ->where('status', '=', 'active')
+            ->paginate(2, 1);
+
+        $this->assertSame(4, $result['total']);
+        $this->assertSame(2, $result['last_page']);
+        $this->assertCount(2, $result['data']->all());
+    }
+
+    public function test_paginate_clamps_page_to_minimum_one(): void
+    {
+        $this->builder()->table('users')->insert([
+            'name' => 'Clamp',
+            'email' => 'clamp@test.com',
+        ]);
+
+        $result = $this->builder()->table('users')->paginate(10, 0);
+
+        $this->assertSame(1, $result['current_page']);
+    }
+
+    public function test_paginate_defaults(): void
+    {
+        for ($i = 1; $i <= 20; $i++) {
+            $this->builder()->table('users')->insert([
+                'name' => "Def{$i}",
+                'email' => "def{$i}@test.com",
+            ]);
+        }
+
+        $result = $this->builder()->table('users')->paginate();
+
+        $this->assertSame(15, $result['per_page']);
+        $this->assertSame(1, $result['current_page']);
+        $this->assertCount(15, $result['data']->all());
+        $this->assertSame(2, $result['last_page']);
+    }
 }

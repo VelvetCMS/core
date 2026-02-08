@@ -333,6 +333,37 @@ class QueryBuilder
         return $result !== null;
     }
 
+    /**
+     * @return array{data: Collection, total: int, per_page: int, current_page: int, last_page: int}
+     */
+    public function paginate(int $perPage = 15, int $page = 1): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, $perPage);
+
+        $countQuery = clone $this;
+        $countQuery->selects = ['COUNT(*) as aggregate'];
+        $countQuery->orderBy = null;
+        $countQuery->orderDirection = 'ASC';
+        $countQuery->limitValue = null;
+        $countQuery->offsetValue = null;
+
+        $countResult = $countQuery->get()->first();
+        $total = (int) ($countResult['aggregate'] ?? 0);
+
+        $dataQuery = clone $this;
+        $dataQuery->limitValue = $perPage;
+        $dataQuery->offsetValue = ($page - 1) * $perPage;
+
+        return [
+            'data' => $dataQuery->get(),
+            'total' => $total,
+            'per_page' => $perPage,
+            'current_page' => $page,
+            'last_page' => max(1, (int) ceil($total / $perPage)),
+        ];
+    }
+
     public function insert(array $data): bool
     {
         $columns = array_keys($data);
@@ -347,6 +378,12 @@ class QueryBuilder
 
         $this->connection->statement($sql, array_values($data));
         return true;
+    }
+
+    public function insertGetId(array $data): int
+    {
+        $this->insert($data);
+        return (int) $this->connection->lastInsertId();
     }
 
     /**
