@@ -97,6 +97,11 @@ class PostgresGrammar extends Grammar
         return 'TEXT';
     }
 
+    protected function typeLongText(array $column): string
+    {
+        return 'TEXT';
+    }
+
     protected function typeInteger(array $column): string
     {
         if ($column['autoIncrement'] ?? false) {
@@ -121,6 +126,11 @@ class PostgresGrammar extends Grammar
     protected function typeTimestamp(array $column): string
     {
         return 'TIMESTAMP(0) WITHOUT TIME ZONE';
+    }
+
+    protected function typeJson(array $column): string
+    {
+        return 'JSONB';
     }
 
     protected function modifyIncrementing(Blueprint $blueprint, array $column): string

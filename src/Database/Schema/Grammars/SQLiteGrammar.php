@@ -99,6 +99,11 @@ class SQLiteGrammar extends Grammar
         return 'TEXT';
     }
 
+    protected function typeLongText(array $column): string
+    {
+        return 'TEXT';
+    }
+
     protected function typeInteger(array $column): string
     {
         return 'INTEGER';
@@ -117,6 +122,11 @@ class SQLiteGrammar extends Grammar
     protected function typeTimestamp(array $column): string
     {
         return 'DATETIME';
+    }
+
+    protected function typeJson(array $column): string
+    {
+        return 'TEXT';
     }
 
     protected function wrap(string $value): string

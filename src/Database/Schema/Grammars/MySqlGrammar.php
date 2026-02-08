@@ -89,6 +89,11 @@ class MySqlGrammar extends Grammar
         return 'TEXT';
     }
 
+    protected function typeLongText(array $column): string
+    {
+        return 'LONGTEXT';
+    }
+
     protected function typeInteger(array $column): string
     {
         return 'INT';
@@ -107,6 +112,11 @@ class MySqlGrammar extends Grammar
     protected function typeTimestamp(array $column): string
     {
         return 'TIMESTAMP';
+    }
+
+    protected function typeJson(array $column): string
+    {
+        return 'JSON';
     }
 
     protected function modifyUnsigned(Blueprint $blueprint, array $column): string

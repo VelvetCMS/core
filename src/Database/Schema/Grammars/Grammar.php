@@ -19,10 +19,12 @@ abstract class Grammar
 
     abstract protected function typeString(array $column): string;
     abstract protected function typeText(array $column): string;
+    abstract protected function typeLongText(array $column): string;
     abstract protected function typeInteger(array $column): string;
     abstract protected function typeBigInteger(array $column): string;
     abstract protected function typeBoolean(array $column): string;
     abstract protected function typeTimestamp(array $column): string;
+    abstract protected function typeJson(array $column): string;
 
     public function compile(Blueprint $blueprint): array
     {
@@ -72,6 +74,10 @@ abstract class Grammar
 
     protected function modifyDefault(Blueprint $blueprint, array $column): string
     {
+        if (!empty($column['useCurrent'])) {
+            return ' DEFAULT CURRENT_TIMESTAMP';
+        }
+
         if (!isset($column['default'])) {
             return '';
         }

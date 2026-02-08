@@ -67,6 +67,11 @@ class Blueprint
         return $this->addColumn('text', $column);
     }
 
+    public function longText(string $column): self
+    {
+        return $this->addColumn('longText', $column);
+    }
+
     public function integer(string $column, bool $autoIncrement = false, bool $unsigned = false): self
     {
         return $this->addColumn('integer', $column, compact('autoIncrement', 'unsigned'));
@@ -75,6 +80,11 @@ class Blueprint
     public function bigInteger(string $column, bool $autoIncrement = false, bool $unsigned = false): self
     {
         return $this->addColumn('bigInteger', $column, compact('autoIncrement', 'unsigned'));
+    }
+
+    public function json(string $column): self
+    {
+        return $this->addColumn('json', $column);
     }
 
     public function boolean(string $column): self
@@ -102,6 +112,12 @@ class Blueprint
     public function default(mixed $value): self
     {
         $this->columns[array_key_last($this->columns)]['default'] = $value;
+        return $this;
+    }
+
+    public function useCurrent(): self
+    {
+        $this->columns[array_key_last($this->columns)]['useCurrent'] = true;
         return $this;
     }
 
