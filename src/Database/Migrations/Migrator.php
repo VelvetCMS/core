@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Database\Migrations;
 
 use VelvetCMS\Database\Connection;
+use VelvetCMS\Database\Schema\Schema;
 
 class Migrator
 {
@@ -12,6 +13,7 @@ class Migrator
         private readonly Connection $connection,
         private readonly MigrationRepository $repository
     ) {
+        Schema::setConnection($connection);
     }
 
     public function run(string $path): void
