@@ -547,13 +547,19 @@ final class ViewEngineTest extends TestCase
     {
         file_put_contents($this->viewDir . '/empty-method.velvet.php', '@empty($obj->items())Empty@endempty');
 
-        $obj = new class {
-            public function items(): array { return []; }
+        $obj = new class () {
+            public function items(): array
+            {
+                return [];
+            }
         };
         $this->assertSame('Empty', $this->engine->render('empty-method', ['obj' => $obj]));
 
-        $obj2 = new class {
-            public function items(): array { return ['a']; }
+        $obj2 = new class () {
+            public function items(): array
+            {
+                return ['a'];
+            }
         };
         $this->assertSame('', $this->engine->render('empty-method', ['obj' => $obj2]));
     }

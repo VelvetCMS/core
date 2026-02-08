@@ -18,6 +18,7 @@ storage/modules-autoload.php
 storage/database.sqlite
 
 .phpunit.cache/
+.php-cs-fixer.cache
 tests/fixtures/content/pages/*.md
 tests/fixtures/storage/cache/*
 
