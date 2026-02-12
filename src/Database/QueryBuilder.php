@@ -29,6 +29,7 @@ class QueryBuilder
 
     public function table(string $table): self
     {
+        $this->assertTableReference($table);
         $this->table = $table;
         return $this;
     }
@@ -62,8 +63,12 @@ class QueryBuilder
 
     public function where(string|RawExpression $column, string $operator, mixed $value): self
     {
+        $this->assertOperator($operator);
 
         $columnSql = $column instanceof RawExpression ? $column->getValue() : $column;
+        if (!$column instanceof RawExpression) {
+            $this->assertColumnReference($columnSql);
+        }
 
         $this->wheres[] = [
             'type' => 'basic',
@@ -96,6 +101,8 @@ class QueryBuilder
 
     public function orWhere(string $column, string $operator, mixed $value): self
     {
+        $this->assertColumnReference($column);
+        $this->assertOperator($operator);
 
         $this->wheres[] = [
             'type' => 'basic',
@@ -112,6 +119,8 @@ class QueryBuilder
 
     public function whereIn(string $column, array $values): self
     {
+        $this->assertColumnReference($column);
+
         $this->wheres[] = [
             'type' => 'in',
             'column' => $column,
@@ -128,6 +137,8 @@ class QueryBuilder
 
     public function whereNull(string $column): self
     {
+        $this->assertColumnReference($column);
+
         $this->wheres[] = [
             'type' => 'null',
             'column' => $column,
@@ -139,6 +150,8 @@ class QueryBuilder
 
     public function whereNotNull(string $column): self
     {
+        $this->assertColumnReference($column);
+
         $this->wheres[] = [
             'type' => 'not_null',
             'column' => $column,
@@ -150,6 +163,11 @@ class QueryBuilder
 
     public function join(string $table, string $first, string $operator, string $second): self
     {
+        $this->assertTableReference($table);
+        $this->assertColumnReference($first);
+        $this->assertColumnReference($second);
+        $this->assertOperator($operator);
+
         $this->joins[] = [
             'type' => 'INNER',
             'table' => $table,
@@ -163,6 +181,11 @@ class QueryBuilder
 
     public function leftJoin(string $table, string $first, string $operator, string $second): self
     {
+        $this->assertTableReference($table);
+        $this->assertColumnReference($first);
+        $this->assertColumnReference($second);
+        $this->assertOperator($operator);
+
         $this->joins[] = [
             'type' => 'LEFT',
             'table' => $table,
@@ -176,6 +199,11 @@ class QueryBuilder
 
     public function rightJoin(string $table, string $first, string $operator, string $second): self
     {
+        $this->assertTableReference($table);
+        $this->assertColumnReference($first);
+        $this->assertColumnReference($second);
+        $this->assertOperator($operator);
+
         // SQLite does not support RIGHT JOIN - convert to LEFT JOIN with swapped tables
         if ($this->connection->getDriver() === 'sqlite') {
             // Swap: "A RIGHT JOIN B ON A.x = B.y" becomes "B LEFT JOIN A ON B.y = A.x"
@@ -198,12 +226,19 @@ class QueryBuilder
 
     public function groupBy(string ...$columns): self
     {
+        foreach ($columns as $column) {
+            $this->assertColumnReference($column);
+        }
+
         $this->groupBy = array_merge($this->groupBy, $columns);
         return $this;
     }
 
     public function having(string $column, string $operator, mixed $value): self
     {
+        $this->assertColumnReference($column);
+        $this->assertOperator($operator);
+
         $this->having[] = [
             'column' => $column,
             'operator' => $operator,
@@ -222,10 +257,7 @@ class QueryBuilder
             $this->orderBy = $column->getValue();
             $this->bindings = array_merge($this->bindings, $column->getBindings());
         } else {
-            // Security: Validate column name to prevent injection
-            if (!preg_match('/^[a-zA-Z0-9_.]+$/', $column)) {
-                throw new \InvalidArgumentException("Invalid column name for orderBy: {$column}. Use RawExpression for complex clauses.");
-            }
+            $this->assertColumnReference($column);
             $this->orderBy = $column;
         }
         $this->orderDirection = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
@@ -366,6 +398,10 @@ class QueryBuilder
 
     public function insert(array $data): bool
     {
+        foreach (array_keys($data) as $column) {
+            $this->assertColumnReference((string) $column);
+        }
+
         $columns = array_keys($data);
         $placeholders = array_fill(0, count($columns), '?');
 
@@ -395,13 +431,24 @@ class QueryBuilder
      */
     public function upsert(array $data, string|array $uniqueBy, ?array $update = null): bool
     {
+        foreach (array_keys($data) as $column) {
+            $this->assertColumnReference((string) $column);
+        }
+
         $uniqueBy = (array) $uniqueBy;
+        foreach ($uniqueBy as $column) {
+            $this->assertColumnReference((string) $column);
+        }
+
         $columns = array_keys($data);
         $placeholders = array_fill(0, count($columns), '?');
         $bindings = array_values($data);
 
         // Determine which columns to update on conflict
         $updateColumns = $update ?? array_diff($columns, $uniqueBy);
+        foreach ($updateColumns as $column) {
+            $this->assertColumnReference((string) $column);
+        }
 
         $driver = $this->connection->getDriver();
 
@@ -484,6 +531,7 @@ class QueryBuilder
         $bindings = [];
 
         foreach ($data as $column => $value) {
+            $this->assertColumnReference((string) $column);
             $sets[] = "{$column} = ?";
             $bindings[] = $value;
         }
@@ -535,6 +583,42 @@ class QueryBuilder
         }
 
         return $sql;
+    }
+
+    private function assertOperator(string $operator): void
+    {
+        if (!preg_match('/^[A-Za-z<>=!]+$/', $operator)) {
+            throw new \InvalidArgumentException("Invalid SQL operator: {$operator}");
+        }
+    }
+
+    private function assertColumnReference(string $column): void
+    {
+        if ($column === '' || !preg_match('/^(?:\*|[A-Za-z_][A-Za-z0-9_]*)(?:\.(?:\*|[A-Za-z_][A-Za-z0-9_]*))*$/', $column)) {
+            throw new \InvalidArgumentException("Invalid column reference: {$column}. Use RawExpression for complex clauses.");
+        }
+    }
+
+    private function assertTableReference(string $table): void
+    {
+        $table = trim($table);
+        if ($table === '') {
+            throw new \InvalidArgumentException('Table name cannot be empty.');
+        }
+
+        $parts = preg_split('/\s+as\s+|\s+/i', $table);
+        if (!is_array($parts) || count($parts) === 0 || count($parts) > 2) {
+            throw new \InvalidArgumentException("Invalid table reference: {$table}");
+        }
+
+        $base = $parts[0];
+        if (!preg_match('/^[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*$/', $base)) {
+            throw new \InvalidArgumentException("Invalid table reference: {$table}");
+        }
+
+        if (isset($parts[1]) && !preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $parts[1])) {
+            throw new \InvalidArgumentException("Invalid table alias in reference: {$table}");
+        }
     }
 
     private function buildJoins(): string

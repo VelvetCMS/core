@@ -79,13 +79,4 @@ $app->singleton('pages', function () use ($app) {
 });
 $app->alias('pages', PageService::class);
 
-// Module system - then load and boot modules
-$app->singleton('modules', function () use ($app) {
-    return new \VelvetCMS\Core\ModuleManager($app);
-});
-$app->alias('modules', \VelvetCMS\Core\ModuleManager::class);
-
-$moduleManager = $app->make('modules');
-$moduleManager->load()->register()->boot();
-
 return $app;

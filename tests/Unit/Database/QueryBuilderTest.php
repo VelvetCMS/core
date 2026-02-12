@@ -243,6 +243,25 @@ final class QueryBuilderTest extends TestCase
             ->toSql();
     }
 
+    public function test_table_validates_reference(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()
+            ->table('users; DROP TABLE users;--')
+            ->toSql();
+    }
+
+    public function test_where_validates_column_reference(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->builder()
+            ->table('users')
+            ->where('name; DROP TABLE users;--', '=', 'x')
+            ->toSql();
+    }
+
     public function test_limit_and_offset(): void
     {
         $sql = $this->builder()

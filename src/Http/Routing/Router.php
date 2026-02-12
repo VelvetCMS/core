@@ -142,13 +142,31 @@ class Router
 
     private function compilePattern(string $path): string
     {
-        // Convert {param*} to greedy named groups (captures nested paths)
-        $pattern = preg_replace('/\{(\w+)\*\}/', '(?P<$1>.+)', $path);
-        // Convert {param?} to optional named groups
-        $pattern = preg_replace('/\{(\w+)\?\}/', '(?P<$1>[^/]*)', $pattern);
-        // Convert {param} to single-segment named regex groups
-        $pattern = preg_replace('/\{(\w+)\}/', '(?P<$1>[^/]+)', $pattern);
-        return '#^' . $pattern . '$#';
+        $placeholders = [];
+
+        $tokenizedPath = preg_replace_callback('/\{(\w+)(\*|\?)?\}/', function (array $matches) use (&$placeholders): string {
+            $name = $matches[1];
+            $modifier = $matches[2] ?? '';
+
+            $replacement = match ($modifier) {
+                '*' => '(?P<' . $name . '>.+)',
+                '?' => '(?P<' . $name . '>[^/]*)',
+                default => '(?P<' . $name . '>[^/]+)',
+            };
+
+            $token = '__VLT_PARAM_' . count($placeholders) . '__';
+            $placeholders[$token] = $replacement;
+
+            return $token;
+        }, $path);
+
+        $escapedPath = preg_quote($tokenizedPath, '#');
+
+        foreach ($placeholders as $token => $replacement) {
+            $escapedPath = str_replace(preg_quote($token, '#'), $replacement, $escapedPath);
+        }
+
+        return '#^' . $escapedPath . '$#';
     }
 
     public function middleware(string|array|callable $middleware): self

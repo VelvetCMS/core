@@ -55,4 +55,16 @@ final class RouterDispatchTest extends TestCase
         $this->assertSame(['a', 'b'], $log);
         $this->assertSame('ok', $response->getContent());
     }
+
+    public function test_static_route_segments_with_dots_are_treated_literally(): void
+    {
+        $router = new Router(new EventDispatcher());
+        $router->get('/api/v1.0/status', fn () => Response::html('ok'));
+
+        $matching = $router->dispatch($this->makeRequest('GET', '/api/v1.0/status'));
+        $nonMatching = $router->dispatch($this->makeRequest('GET', '/api/v1X0/status'));
+
+        $this->assertSame(200, $matching->getStatus());
+        $this->assertSame(404, $nonMatching->getStatus());
+    }
 }
