@@ -26,4 +26,23 @@ return [
 
     /** Default locale */
     'locale' => 'en',
+
+    /** Enable optional WebCron endpoint registration */
+    'cron_enabled' => (bool) env('CRON_ENABLED', false),
+
+    /** Shared token for WebCron authorization */
+    'cron_token' => env('CRON_TOKEN', ''),
+
+    /** Optional WebCron request signing using expires/signature query params */
+    'cron_signed_urls' => (bool) env('CRON_SIGNED_URLS', false),
+
+    /** Optional WebCron source IP allowlist (exact, CIDR, or *) */
+    'cron_allowed_ips' => [],
+
+    /** Optional WebCron rate limiting */
+    'cron_rate_limit' => [
+        'enabled' => false,
+        'attempts' => 60,
+        'decay' => 60,
+    ],
 ];
