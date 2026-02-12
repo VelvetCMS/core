@@ -100,13 +100,13 @@ class Request
     public function url(): string
     {
         $scheme = $this->isSecure() ? 'https' : 'http';
-        $host = $this->server['HTTP_HOST'] ?? 'localhost';
+        $host = $this->host();
         return $scheme . '://' . $host . $this->rawPath();
     }
 
     public function host(): string
     {
-        $host = $this->server['HTTP_HOST'] ?? $this->server['SERVER_NAME'] ?? 'localhost';
+        $host = $this->forwardedHost() ?? ($this->server['HTTP_HOST'] ?? $this->server['SERVER_NAME'] ?? 'localhost');
         $host = strtolower((string) $host);
 
         if (str_contains($host, ':')) {
@@ -129,6 +129,14 @@ class Request
 
     public function isSecure(): bool
     {
+        $forwardedProto = $this->forwardedHeader('proto', 'X-Forwarded-Proto');
+        if ($forwardedProto !== null) {
+            $protos = array_map('trim', explode(',', strtolower($forwardedProto)));
+            if (in_array('https', $protos, true)) {
+                return true;
+            }
+        }
+
         return isset($this->server['HTTPS']) && $this->server['HTTPS'] !== 'off';
     }
 
@@ -190,6 +198,16 @@ class Request
 
     public function ip(): ?string
     {
+        $forwardedFor = $this->forwardedHeader('for', 'X-Forwarded-For');
+        if ($forwardedFor !== null) {
+            foreach (explode(',', $forwardedFor) as $candidate) {
+                $candidate = trim($candidate);
+                if ($candidate !== '' && filter_var($candidate, FILTER_VALIDATE_IP) !== false) {
+                    return $candidate;
+                }
+            }
+        }
+
         return $this->server['REMOTE_ADDR'] ?? null;
     }
 
@@ -212,5 +230,119 @@ class Request
     {
         $contentType = $this->server['CONTENT_TYPE'] ?? $this->server['HTTP_CONTENT_TYPE'] ?? '';
         return stripos($contentType, 'application/json') !== false;
+    }
+
+    private function forwardedHost(): ?string
+    {
+        $forwardedHost = $this->forwardedHeader('host', 'X-Forwarded-Host');
+        if ($forwardedHost === null) {
+            return null;
+        }
+
+        $candidates = array_map('trim', explode(',', $forwardedHost));
+        foreach ($candidates as $candidate) {
+            if ($candidate === '') {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
+    }
+
+    private function forwardedHeader(string $key, string $defaultHeader): ?string
+    {
+        if (!$this->isTrustedProxyRequest()) {
+            return null;
+        }
+
+        $headers = config('http.trusted_proxies.headers', []);
+        $headerName = is_array($headers) && isset($headers[$key]) ? (string) $headers[$key] : $defaultHeader;
+        $value = $this->header($headerName);
+
+        if (!is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return $value;
+    }
+
+    private function isTrustedProxyRequest(): bool
+    {
+        if (!(bool) config('http.trusted_proxies.enabled', false)) {
+            return false;
+        }
+
+        $remoteAddr = (string) ($this->server['REMOTE_ADDR'] ?? '');
+        if ($remoteAddr === '') {
+            return false;
+        }
+
+        $proxies = config('http.trusted_proxies.proxies', []);
+        if (!is_array($proxies) || $proxies === []) {
+            return false;
+        }
+
+        foreach ($proxies as $proxy) {
+            if (!is_string($proxy) || $proxy === '') {
+                continue;
+            }
+
+            if ($proxy === '*') {
+                return true;
+            }
+
+            if (str_contains($proxy, '/')) {
+                if ($this->ipInCidr($remoteAddr, $proxy)) {
+                    return true;
+                }
+                continue;
+            }
+
+            if ($proxy === $remoteAddr) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function ipInCidr(string $ip, string $cidr): bool
+    {
+        [$subnet, $bits] = array_pad(explode('/', $cidr, 2), 2, null);
+        if (!is_string($subnet) || !is_string($bits) || !is_numeric($bits)) {
+            return false;
+        }
+
+        $ipBin = @inet_pton($ip);
+        $subnetBin = @inet_pton($subnet);
+
+        if ($ipBin === false || $subnetBin === false || strlen($ipBin) !== strlen($subnetBin)) {
+            return false;
+        }
+
+        $bitsInt = (int) $bits;
+        $maxBits = strlen($ipBin) * 8;
+        if ($bitsInt < 0 || $bitsInt > $maxBits) {
+            return false;
+        }
+
+        $bytes = intdiv($bitsInt, 8);
+        $remainingBits = $bitsInt % 8;
+
+        if ($bytes > 0 && substr($ipBin, 0, $bytes) !== substr($subnetBin, 0, $bytes)) {
+            return false;
+        }
+
+        if ($remainingBits === 0) {
+            return true;
+        }
+
+        $mask = (~(0xff >> $remainingBits)) & 0xff;
+        $ipByte = ord($ipBin[$bytes]);
+        $subnetByte = ord($subnetBin[$bytes]);
+
+        return ($ipByte & $mask) === ($subnetByte & $mask);
     }
 }

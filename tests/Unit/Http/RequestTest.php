@@ -97,6 +97,52 @@ final class RequestTest extends TestCase
         $this->assertTrue($request->isSecure());
     }
 
+    public function test_trusted_proxy_uses_forwarded_scheme_and_host(): void
+    {
+        config([
+            'http.trusted_proxies.enabled' => true,
+            'http.trusted_proxies.proxies' => ['127.0.0.1'],
+        ]);
+
+        $_SERVER = [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/dashboard',
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_HOST' => 'internal.local',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'HTTP_X_FORWARDED_HOST' => 'app.example.com',
+        ];
+
+        $request = \VelvetCMS\Http\Request::capture();
+
+        $this->assertTrue($request->isSecure());
+        $this->assertSame('app.example.com', $request->host());
+        $this->assertSame('https://app.example.com/dashboard', $request->url());
+    }
+
+    public function test_untrusted_proxy_ignores_forwarded_headers(): void
+    {
+        config([
+            'http.trusted_proxies.enabled' => true,
+            'http.trusted_proxies.proxies' => ['10.0.0.1'],
+        ]);
+
+        $_SERVER = [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/dashboard',
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_HOST' => 'internal.local',
+            'HTTP_X_FORWARDED_PROTO' => 'https',
+            'HTTP_X_FORWARDED_HOST' => 'app.example.com',
+        ];
+
+        $request = \VelvetCMS\Http\Request::capture();
+
+        $this->assertFalse($request->isSecure());
+        $this->assertSame('internal.local', $request->host());
+        $this->assertSame('http://internal.local/dashboard', $request->url());
+    }
+
     public function test_input_merges_get_and_post(): void
     {
         $_GET = ['from_get' => 'get_value'];
@@ -225,6 +271,25 @@ final class RequestTest extends TestCase
         $request = \VelvetCMS\Http\Request::capture();
 
         $this->assertSame('192.168.1.1', $request->ip());
+    }
+
+    public function test_ip_uses_forwarded_for_when_proxy_is_trusted(): void
+    {
+        config([
+            'http.trusted_proxies.enabled' => true,
+            'http.trusted_proxies.proxies' => ['127.0.0.1'],
+        ]);
+
+        $_SERVER = [
+            'REQUEST_METHOD' => 'GET',
+            'REQUEST_URI' => '/',
+            'REMOTE_ADDR' => '127.0.0.1',
+            'HTTP_X_FORWARDED_FOR' => '203.0.113.5, 10.0.0.1',
+        ];
+
+        $request = \VelvetCMS\Http\Request::capture();
+
+        $this->assertSame('203.0.113.5', $request->ip());
     }
 
     public function test_ajax_detects_xhr(): void

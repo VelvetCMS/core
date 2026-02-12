@@ -38,4 +38,15 @@ return [
 
         'whitelist' => ['127.0.0.1', '::1'],
     ],
+
+    /** Trusted reverse proxy settings */
+    'trusted_proxies' => [
+        'enabled' => false,
+        'proxies' => [],
+        'headers' => [
+            'for' => 'X-Forwarded-For',
+            'proto' => 'X-Forwarded-Proto',
+            'host' => 'X-Forwarded-Host',
+        ],
+    ],
 ];
