@@ -316,6 +316,18 @@ final class ViewEngineTest extends TestCase
         $this->assertSame('123', $output);
     }
 
+    public function test_compile_string_can_be_disabled_by_configuration(): void
+    {
+        config(['view.allow_string_evaluation' => false]);
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->engine->compileString('Hello {{ $name }}', ['name' => 'World']);
+        } finally {
+            config(['view.allow_string_evaluation' => true]);
+        }
+    }
+
     // === Safe Mode ===
 
     public function test_safe_strips_php_blocks(): void
@@ -332,6 +344,18 @@ final class ViewEngineTest extends TestCase
 
         $this->assertStringNotContainsString('<b>', $output);
         $this->assertStringContainsString('&lt;b&gt;', $output);
+    }
+
+    public function test_safe_can_be_disabled_by_configuration(): void
+    {
+        config(['view.allow_string_evaluation' => false]);
+
+        try {
+            $this->expectException(RuntimeException::class);
+            $this->engine->safe('Hello {{ $name }}', ['name' => 'World']);
+        } finally {
+            config(['view.allow_string_evaluation' => true]);
+        }
     }
 
     // === Cache ===

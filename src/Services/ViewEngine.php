@@ -96,6 +96,8 @@ class ViewEngine
 
     public function compileString(string $template, array $data = []): string
     {
+        $this->assertStringEvaluationAllowed();
+
         $content = $this->compileEchos($template);
         $content = $this->compileDirectives($content);
         return $this->evaluateString($content, array_merge($this->shared, $data));
@@ -103,6 +105,8 @@ class ViewEngine
 
     public function safe(string $template, array $data = []): string
     {
+        $this->assertStringEvaluationAllowed();
+
         $template = preg_replace('/@php\s*.*?@endphp/s', '', $template);
         $template = preg_replace('/\{!!\s*(.+?)\s*!!\}/', '{{ $1 }}', $template);
 
@@ -383,6 +387,13 @@ class ViewEngine
     {
         foreach (glob($this->cachePath . '/*.php') as $file) {
             unlink($file);
+        }
+    }
+
+    private function assertStringEvaluationAllowed(): void
+    {
+        if (!(bool) config('view.allow_string_evaluation', true)) {
+            throw new \RuntimeException('String template evaluation is disabled by configuration.');
         }
     }
 }

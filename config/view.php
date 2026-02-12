@@ -11,4 +11,7 @@ return [
 
     /** Compiled views cache directory (relative to storage_path) */
     'compiled' => 'cache/views',
+
+    /** Allow runtime string template evaluation in compileString/safe */
+    'allow_string_evaluation' => true,
 ];
