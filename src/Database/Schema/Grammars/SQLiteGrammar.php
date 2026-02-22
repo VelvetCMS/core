@@ -129,6 +129,15 @@ class SQLiteGrammar extends Grammar
         return 'TEXT';
     }
 
+    protected function modifyIncrementing(Blueprint $blueprint, array $column): string
+    {
+        if (in_array($column['type'], ['integer', 'bigInteger'], true) && ($column['autoIncrement'] ?? false)) {
+            return ' PRIMARY KEY AUTOINCREMENT';
+        }
+
+        return '';
+    }
+
     protected function wrap(string $value): string
     {
         return '"' . str_replace('"', '""', $value) . '"';
