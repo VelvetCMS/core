@@ -177,6 +177,7 @@ class ViewEngine
 
     private function compileEchos(string $content): string
     {
+        $content = preg_replace('/\{\{--.*?--\}\}/s', '', $content);
         $content = preg_replace('/(?<!@)\{!!\s*(.+?)\s*!!\}/', '<?php echo $1; ?>', $content);
         $content = preg_replace('/(?<!@)\{\{\s*(.+?)\s*\}\}/', '<?php echo e($1); ?>', $content);
         $content = str_replace(['@{{', '@{!!'], ['{{', '{!!'], $content);

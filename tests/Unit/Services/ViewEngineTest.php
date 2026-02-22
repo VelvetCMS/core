@@ -85,6 +85,16 @@ final class ViewEngineTest extends TestCase
         $this->assertSame('{{ $notParsed }}', $output);
     }
 
+    public function test_blade_style_comments_are_stripped(): void
+    {
+        file_put_contents($this->viewDir . '/comments.velvet.php', 'A{{-- hidden --}}B {{ $name }}');
+
+        $output = $this->engine->render('comments', ['name' => 'X']);
+
+        $this->assertSame('AB X', $output);
+        $this->assertStringNotContainsString('hidden', $output);
+    }
+
     // === Layouts and Sections ===
 
     public function test_includes_and_extends(): void
