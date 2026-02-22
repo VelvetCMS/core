@@ -13,9 +13,11 @@
 
 ## Why VelvetCMS Core?
 
-Most PHP frameworks fall into two camps: heavyweight full-stack solutions with steep learning curves, or minimal routers that leave you rebuilding the same features for every project. VelvetCMS Core fills the gap.
+Most PHP frameworks fall into two camps: heavyweight full-stack solutions with steep learning curves, or minimal routers that leave you rebuilding the same features for every project. VelvetCMS Core sits between those extremes.
 
-We call it **Pragmatic Zero Magic**. You should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
+It is built for developers and teams that want full-stack capabilities without framework opacity: explicit architecture, practical defaults, and a codebase you can reason about quickly.
+
+That philosophy is what we call **Pragmatic Zero Magic**. You should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
 
 - **Explicit over Implicit**: Core services are wired manually. It's faster, clearer, and easier to debug.
 - **Pragmatic Convenience**: Autowiring is available for your controllers and commands, but it's a tool, not a crutch.
@@ -47,7 +49,7 @@ We call it **Pragmatic Zero Magic**. You should be able to trace every part of y
   - **Fluent Interface**: Define tables and columns with an expressive syntax (`$table->string('title')->nullable()`).
   - **Migration System**: Version control for your database schema with `up` and `down` methods.
 - **Pluggable Markdown Engine**:
-  - **Drivers**: Support for `CommonMark` (default), `Parsedown`, or simple `HTML` pass-through.
+  - **Drivers**: Support for `CommonMark` (recommended), `Parsedown`, or simple `HTML` pass-through.
   - **Extensible**: Custom template tags (`{{ }}`, `{!! !!}`) preserved in all drivers.
   - **CommonMark Features**: Tables, Strikethrough, Autolink, Task Lists (via extensions).
 - **Velvet Content Blocks**: `.vlt` files with YAML frontmatter and block switches (`@markdown`, `@html`, `@text`).
@@ -71,15 +73,18 @@ We call it **Pragmatic Zero Magic**. You should be able to trace every part of y
   - **Custom Rules**: `Validator::extend('slug', fn($value) => ...)` for project-specific validation.
 - **View Engine**: Lightweight yet powerful templating system featuring:
   - Blade-like syntax (`{{ }}`, `{!! !!}`)
+  - Blade-style comments (`{{-- ... --}}`)
   - Control structures (`@if`, `@foreach`)
   - Layout inheritance (`@extends`, `@section`, `@yield`)
   - Partials and includes (`@include`)
   - Namespace support for modular views
+  - Configurable runtime string evaluation guard for `compileString()` / `safe()`
 - **Asset Server**: Built-in static asset serving for development and production, handling MIME types and module assets efficiently.
+- **Trusted Proxy Support**: Optional forwarded host/scheme/IP handling for reverse-proxy deployments (`http.trusted_proxies`).
 - **Security Suite**: Built-in protection against common vectors.
   - ✅ **XSS Protection** - Auto-escaping template engine
   - ✅ **CSRF Protection** - Token-based validation
-  - ✅ **SQL Injection** - Prepared statements everywhere
+  - ✅ **SQL Injection** - Prepared statements by default, with explicit raw-expression escape hatches for advanced clauses
   - ✅ **Session Security** - httponly, secure, samesite flags
   - ✅ **Path Traversal** - Sanitization and realpath checks
 - **Rate Limiting**:
