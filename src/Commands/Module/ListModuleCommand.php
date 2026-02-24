@@ -67,9 +67,9 @@ class ListModuleCommand extends Command
 
             if ($isEnabled) {
                 if ($isCompiled) {
-                    $status = "\033[32mEnable\033[0m";
+                    $status = "\033[32mEnabled\033[0m";
                 } else {
-                    $status = "\033[33mEnable (Pending)\033[0m";
+                    $status = "\033[33mEnabled (Pending)\033[0m";
                 }
             } else {
                 $status = "\033[90mDisabled\033[0m";
