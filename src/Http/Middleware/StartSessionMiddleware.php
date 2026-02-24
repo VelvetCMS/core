@@ -31,6 +31,13 @@ class StartSessionMiddleware implements MiddlewareInterface
         $sessionName = config('session.name', 'velvet_session');
         session_name($sessionName);
 
+        // Session storage
+        $savePath = storage_path('sessions');
+        if (!is_dir($savePath)) {
+            mkdir($savePath, 0700, true);
+        }
+        ini_set('session.save_path', $savePath);
+
         // Security settings
         ini_set('session.cookie_httponly', config('session.http_only', true) ? '1' : '0');
         ini_set('session.use_strict_mode', config('session.strict_mode', true) ? '1' : '0');
