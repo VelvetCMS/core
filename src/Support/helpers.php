@@ -238,7 +238,9 @@ if (!function_exists('view_path')) {
         $viewPath = trim($viewPath, '/');
 
         if (tenant_enabled() && tenant_id() !== null && str_starts_with($viewPath, 'user/')) {
-            $viewPath = 'user/tenants/' . tenant_id() . '/' . substr($viewPath, strlen('user/'));
+            $subPath = substr($viewPath, strlen('user/'));
+            $base = tenant_user_path($subPath);
+            return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
         }
 
         $base = base_path($viewPath);
