@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
+use VelvetCMS\Commands\Concerns\InteractsWithTenancy;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Core\ModuleManager;
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 
 class EnableModuleCommand extends Command
 {
+    use InteractsWithTenancy;
+
     public static function category(): string
     {
         return 'Modules';
@@ -23,7 +27,7 @@ class EnableModuleCommand extends Command
 
     public function signature(): string
     {
-        return 'module:enable {module}';
+        return 'module:enable {module} [--tenant=] [--all-tenants]';
     }
 
     public function description(): string
@@ -53,11 +57,20 @@ class EnableModuleCommand extends Command
             return 1;
         }
 
-        $statePath = $this->app->basePath() . '/storage/modules.json';
+        if ((bool) $this->option('all-tenants', false)) {
+            return $this->handleAllTenants($moduleName);
+        }
+
+        $statePath = ModuleArtifactPaths::statePath(basePath: $this->app->basePath());
+        $readPath = $this->resolveStatePathForRead($this->app->basePath());
+        $stateDir = dirname($statePath);
+        if (!is_dir($stateDir)) {
+            mkdir($stateDir, 0755, true);
+        }
 
         $state = [];
-        if (file_exists($statePath)) {
-            $state = json_decode(file_get_contents($statePath), true) ?? [];
+        if (file_exists($readPath)) {
+            $state = json_decode(file_get_contents($readPath), true) ?? [];
         }
 
         $enabled = $state['enabled'] ?? [];
@@ -79,4 +92,42 @@ class EnableModuleCommand extends Command
 
         return 0;
     }
+
+    private function handleAllTenants(string $moduleName): int
+    {
+        try {
+            $tenants = $this->resolveTenantSelection(allowAllTenants: true, fallbackToCurrentTenant: false);
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+            return self::FAILURE;
+        }
+
+        if ($tenants === []) {
+            $this->warning('No tenants discovered under user tenancy root.');
+            return self::SUCCESS;
+        }
+
+        $this->info("Enabling module '{$moduleName}' for all tenants...");
+        $failures = [];
+
+        foreach ($tenants as $tenantId) {
+            $this->line();
+            $this->line("\033[1m[tenant: {$tenantId}]\033[0m");
+
+            $exitCode = $this->runVelvetSubcommand($this->app->basePath(), 'module:enable ' . escapeshellarg($moduleName), $tenantId);
+
+            if ($exitCode !== 0) {
+                $failures[] = $tenantId;
+            }
+        }
+
+        if ($failures !== []) {
+            $this->error('Failed tenants: ' . implode(', ', $failures));
+            return self::FAILURE;
+        }
+
+        $this->success("Enabled '{$moduleName}' for all tenants.");
+        return self::SUCCESS;
+    }
+
 }

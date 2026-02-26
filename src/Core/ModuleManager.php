@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Core;
 
 use VelvetCMS\Contracts\Module;
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 use VelvetCMS\Exceptions\ModuleException;
 
 class ModuleManager
@@ -30,9 +31,15 @@ class ModuleManager
 
     public function load(): self
     {
-        $compiledPath = $this->basePath . '/storage/modules-compiled.json';
+        $compiledPath = null;
+        foreach (ModuleArtifactPaths::compiledCandidates($this->basePath) as $candidate) {
+            if (file_exists($candidate)) {
+                $compiledPath = $candidate;
+                break;
+            }
+        }
 
-        if (!file_exists($compiledPath)) {
+        if ($compiledPath === null) {
             // No compiled manifest, skip module loading
             return $this;
         }
@@ -112,9 +119,15 @@ class ModuleManager
 
     public function registerAutoloader(): void
     {
-        $autoloadPath = $this->basePath . '/storage/modules-autoload.php';
+        $autoloadPath = null;
+        foreach (ModuleArtifactPaths::autoloadCandidates($this->basePath) as $candidate) {
+            if (file_exists($candidate)) {
+                $autoloadPath = $candidate;
+                break;
+            }
+        }
 
-        if (!file_exists($autoloadPath)) {
+        if ($autoloadPath === null) {
             // Fallback: no compiled autoloader, autoload will fail gracefully
             return;
         }

@@ -5,18 +5,19 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Core;
 
 use VelvetCMS\Core\VersionRegistry;
+use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class VersionRegistryTest extends TestCase
 {
+    use ReflectionHelpers;
+
     protected function setUp(): void
     {
         parent::setUp();
 
         // Reset singleton for each test
-        $reflection = new \ReflectionClass(VersionRegistry::class);
-        $instanceProp = $reflection->getProperty('instance');
-        $instanceProp->setValue(null, null);
+        $this->setPrivateProperty(VersionRegistry::class, 'instance', null);
 
         // Set up test version config
         config(['version' => [

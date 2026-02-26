@@ -7,6 +7,7 @@ namespace VelvetCMS\Core;
 use Composer\Semver\Comparator;
 use Composer\Semver\Semver;
 use Composer\Semver\VersionParser;
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 
 final class VersionRegistry
 {
@@ -39,9 +40,15 @@ final class VersionRegistry
     /** @return array<string, array<string, mixed>> */
     private function loadCompiledModules(): array
     {
-        $path = base_path('storage/modules-compiled.json');
+        $path = null;
+        foreach (ModuleArtifactPaths::compiledCandidates() as $candidate) {
+            if (is_file($candidate)) {
+                $path = $candidate;
+                break;
+            }
+        }
 
-        if (!is_file($path)) {
+        if ($path === null) {
             return [];
         }
 

@@ -8,10 +8,12 @@ use PHPUnit\Framework\TestCase;
 use ReflectionClass;
 use ReflectionMethod;
 use VelvetCMS\Core\CoreServiceProvider;
-use VelvetCMS\Core\Tenancy\TenancyManager;
+use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
 
 final class TenantDatabaseResolutionTest extends TestCase
 {
+    use TenancyTestHelpers;
+
     private ReflectionMethod $resolveMethod;
     private CoreServiceProvider $provider;
 
@@ -26,7 +28,7 @@ final class TenantDatabaseResolutionTest extends TestCase
 
     protected function tearDown(): void
     {
-        $this->resetTenancyConfig();
+        $this->resetTenancyState();
         parent::tearDown();
     }
 
@@ -210,19 +212,4 @@ final class TenantDatabaseResolutionTest extends TestCase
         ];
     }
 
-    private function setTenancyConfig(array $config): void
-    {
-        $ref = new ReflectionClass(TenancyManager::class);
-        $prop = $ref->getProperty('config');
-        $prop->setAccessible(true);
-        $prop->setValue(null, $config);
-    }
-
-    private function resetTenancyConfig(): void
-    {
-        $ref = new ReflectionClass(TenancyManager::class);
-        $prop = $ref->getProperty('config');
-        $prop->setAccessible(true);
-        $prop->setValue(null, null);
-    }
 }

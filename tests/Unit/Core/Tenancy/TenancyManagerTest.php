@@ -4,15 +4,16 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
-use ReflectionClass;
 use VelvetCMS\Contracts\TenantResolverInterface;
 use VelvetCMS\Core\Tenancy\TenancyManager;
 use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Http\Request;
+use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class TenancyManagerTest extends TestCase
 {
+    use TenancyTestHelpers;
     protected function tearDown(): void
     {
         $this->resetTenancyState();
@@ -108,31 +109,6 @@ final class TenancyManagerTest extends TestCase
         }
     }
 
-    private function setTenancyConfig(array $config): void
-    {
-        $ref = new ReflectionClass(TenancyManager::class);
-
-        $configProp = $ref->getProperty('config');
-        $configProp->setAccessible(true);
-        $configProp->setValue(null, $config);
-
-        $currentProp = $ref->getProperty('current');
-        $currentProp->setAccessible(true);
-        $currentProp->setValue(null, null);
-    }
-
-    private function resetTenancyState(): void
-    {
-        $ref = new ReflectionClass(TenancyManager::class);
-
-        $configProp = $ref->getProperty('config');
-        $configProp->setAccessible(true);
-        $configProp->setValue(null, null);
-
-        $currentProp = $ref->getProperty('current');
-        $currentProp->setAccessible(true);
-        $currentProp->setValue(null, null);
-    }
 }
 
 final class TestTenantResolver implements TenantResolverInterface

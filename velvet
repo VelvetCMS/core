@@ -31,6 +31,28 @@ if (!$autoloadPath) {
 
 require $autoloadPath;
 
+// Allow command-level tenant override before bootstrap: --tenant=<id> or --tenant <id>
+$tenantOverride = null;
+for ($i = 1; $i < count($argv); $i++) {
+    $arg = $argv[$i] ?? '';
+
+    if (str_starts_with($arg, '--tenant=')) {
+        $tenantOverride = substr($arg, strlen('--tenant='));
+        break;
+    }
+
+    if ($arg === '--tenant') {
+        $tenantOverride = $argv[$i + 1] ?? null;
+        break;
+    }
+}
+
+if (is_string($tenantOverride) && $tenantOverride !== '') {
+    $_ENV['TENANCY_TENANT'] = $tenantOverride;
+    $_SERVER['TENANCY_TENANT'] = $tenantOverride;
+    putenv('TENANCY_TENANT=' . $tenantOverride);
+}
+
 \VelvetCMS\Core\Tenancy\TenancyManager::bootstrapFromCli();
 
 // Bootstrap application
@@ -73,6 +95,8 @@ use VelvetCMS\Commands\Page\ListCommand as PageListCommand;
 use VelvetCMS\Commands\Page\PublishCommand as PagePublishCommand;
 use VelvetCMS\Commands\Page\DeleteCommand as PageDeleteCommand;
 use VelvetCMS\Commands\OptimizeCommand;
+use VelvetCMS\Commands\MigrateTenantsCommand;
+use VelvetCMS\Commands\Module\MigrateModuleArtifactsCommand;
 
 $registry = new CommandRegistry();
 
@@ -113,6 +137,7 @@ if ($app) {
         $registry->register('page:delete', PageDeleteCommand::class);
         $registry->register('content:migrate', \VelvetCMS\Commands\Content\MigrateContentCommand::class);
         $registry->register('migrate', MigrateCommand::class);
+        $registry->register('migrate:tenants', MigrateTenantsCommand::class);
         $registry->register('optimize', OptimizeCommand::class);
         $registry->register('route:cache', \VelvetCMS\Commands\Route\CacheCommand::class);
 
@@ -124,6 +149,7 @@ if ($app) {
 
         $registry->register('module:list', \VelvetCMS\Commands\Module\ListModuleCommand::class);
         $registry->register('module:compile', \VelvetCMS\Commands\Module\CompileModuleCommand::class);
+        $registry->register('module:migrate-artifacts', MigrateModuleArtifactsCommand::class);
         $registry->register('module:enable', \VelvetCMS\Commands\Module\EnableModuleCommand::class);
         $registry->register('module:disable', \VelvetCMS\Commands\Module\DisableModuleCommand::class);
     } catch (\Throwable $e) {

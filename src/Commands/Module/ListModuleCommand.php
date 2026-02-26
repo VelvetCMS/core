@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
+use VelvetCMS\Commands\Concerns\InteractsWithTenancy;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Core\ModuleManager;
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 
 class ListModuleCommand extends Command
 {
+    use InteractsWithTenancy;
+
     public static function category(): string
     {
         return 'Modules';
@@ -22,7 +26,7 @@ class ListModuleCommand extends Command
 
     public function signature(): string
     {
-        return 'module:list';
+        return 'module:list [--tenant=] [--all-tenants]';
     }
 
     public function description(): string
@@ -32,6 +36,10 @@ class ListModuleCommand extends Command
 
     public function handle(): int
     {
+        if ((bool) $this->option('all-tenants', false)) {
+            return $this->handleAllTenants();
+        }
+
         $moduleManager = $this->app->make(ModuleManager::class);
         $discovered = $moduleManager->discover();
 
@@ -40,14 +48,16 @@ class ListModuleCommand extends Command
             return 0;
         }
 
-        $statePath = $this->app->basePath() . '/storage/modules.json';
+        $statePath = $this->firstExisting(ModuleArtifactPaths::stateCandidates($this->app->basePath()))
+            ?? ModuleArtifactPaths::statePath(basePath: $this->app->basePath());
         $enabledModules = [];
         if (file_exists($statePath)) {
             $state = json_decode(file_get_contents($statePath), true);
             $enabledModules = $state['enabled'] ?? [];
         }
 
-        $compiledPath = $this->app->basePath() . '/storage/modules-compiled.json';
+        $compiledPath = $this->firstExisting(ModuleArtifactPaths::compiledCandidates($this->app->basePath()))
+            ?? ModuleArtifactPaths::compiledPath(basePath: $this->app->basePath());
         $compiledModules = [];
         if (file_exists($compiledPath)) {
             $compiledData = json_decode(file_get_contents($compiledPath), true);
@@ -91,5 +101,46 @@ class ListModuleCommand extends Command
 
         $this->line();
         return 0;
+    }
+
+    private function handleAllTenants(): int
+    {
+        try {
+            $tenants = $this->resolveTenantSelection(allowAllTenants: true, fallbackToCurrentTenant: false);
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+            return self::FAILURE;
+        }
+
+        if ($tenants === []) {
+            $this->warning('No tenants discovered under user tenancy root.');
+            return self::SUCCESS;
+        }
+
+        foreach ($tenants as $tenantId) {
+            $this->line();
+            $this->line("\033[1m[tenant: {$tenantId}]\033[0m");
+
+            $exitCode = $this->runVelvetSubcommand($this->app->basePath(), 'module:list', $tenantId);
+            if ($exitCode !== 0) {
+                return self::FAILURE;
+            }
+        }
+
+        return self::SUCCESS;
+    }
+
+    /**
+     * @param array<int, string> $paths
+     */
+    private function firstExisting(array $paths): ?string
+    {
+        foreach ($paths as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        return null;
     }
 }

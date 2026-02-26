@@ -57,9 +57,7 @@ final class CommandRegistryTest extends TestCase
     {
         $registry = new CommandRegistry();
 
-        ob_start();
-        $result = $registry->run('missing');
-        $output = ob_get_clean();
+        [$result, $output] = $this->captureOutput(fn () => $registry->run('missing'));
 
         $this->assertSame(1, $result);
         $this->assertStringContainsString("Command 'missing' not found", $output);

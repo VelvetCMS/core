@@ -5,13 +5,17 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Module;
 
 use VelvetCMS\Commands\Command;
+use VelvetCMS\Commands\Concerns\InteractsWithTenancy;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Core\ModuleManager;
 use VelvetCMS\Core\ModuleManifest;
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 use VelvetCMS\Core\VersionRegistry;
 
 class CompileModuleCommand extends Command
 {
+    use InteractsWithTenancy;
+
     public static function category(): string
     {
         return 'Modules';
@@ -24,7 +28,7 @@ class CompileModuleCommand extends Command
 
     public function signature(): string
     {
-        return 'module:compile';
+        return 'module:compile [--tenant=] [--all-tenants]';
     }
 
     public function description(): string
@@ -34,6 +38,10 @@ class CompileModuleCommand extends Command
 
     public function handle(): int
     {
+        if ((bool) $this->option('all-tenants', false)) {
+            return $this->handleAllTenants();
+        }
+
         $this->line('Compiling modules...');
         $this->line();
 
@@ -50,7 +58,7 @@ class CompileModuleCommand extends Command
         $this->line("Discovered \033[32m" . count($discovered) . "\033[0m modules");
         $this->line();
 
-        $statePath = $this->app->basePath() . '/storage/modules.json';
+        $statePath = $this->resolveStatePathForRead($this->app->basePath());
         $state = [];
 
         if (file_exists($statePath)) {
@@ -127,7 +135,11 @@ class CompileModuleCommand extends Command
             ];
         }
 
-        $compiledPath = $this->app->basePath() . '/storage/modules-compiled.json';
+        $compiledPath = ModuleArtifactPaths::compiledPath(basePath: $this->app->basePath());
+        $compiledDir = dirname($compiledPath);
+        if (!is_dir($compiledDir)) {
+            mkdir($compiledDir, 0755, true);
+        }
         file_put_contents($compiledPath, json_encode($compiled, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 
         $this->generateAutoloader($compiled['modules']);
@@ -140,10 +152,47 @@ class CompileModuleCommand extends Command
         }
 
         $this->line("\033[32m✓ Successfully compiled " . count($compiled['modules']) . " module(s)\033[0m");
-        $this->line('  Written to: storage/modules-compiled.json');
-        $this->line('  Autoloader: storage/modules-autoload.php');
+        $this->line('  Written to: ' . $this->relativeToBase($compiledPath));
+        $this->line('  Autoloader: ' . $this->relativeToBase(ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath())));
 
         return 0;
+    }
+
+    private function handleAllTenants(): int
+    {
+        try {
+            $tenants = $this->resolveTenantSelection(allowAllTenants: true, fallbackToCurrentTenant: false);
+        } catch (\RuntimeException $e) {
+            $this->error($e->getMessage());
+            return self::FAILURE;
+        }
+
+        if ($tenants === []) {
+            $this->warning('No tenants discovered under user tenancy root.');
+            return self::SUCCESS;
+        }
+
+        $this->info('Compiling modules for all tenants...');
+        $failures = [];
+
+        foreach ($tenants as $tenantId) {
+            $this->line();
+            $this->line("\033[1m[tenant: {$tenantId}]\033[0m");
+
+            $exitCode = $this->runVelvetSubcommand($this->app->basePath(), 'module:compile', $tenantId);
+
+            if ($exitCode !== 0) {
+                $failures[] = $tenantId;
+            }
+        }
+
+        if ($failures !== []) {
+            $this->error('Failed tenants: ' . implode(', ', $failures));
+            return self::FAILURE;
+        }
+
+        $this->success('Compiled modules for all tenants.');
+        return self::SUCCESS;
     }
 
     private function generateAutoloader(array $modules): void
@@ -188,7 +237,11 @@ class CompileModuleCommand extends Command
         $php .= " */\n\n";
         $php .= 'return ' . var_export($config, true) . ";\n";
 
-        $autoloadPath = $this->app->basePath() . '/storage/modules-autoload.php';
+        $autoloadPath = ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath());
+        $autoloadDir = dirname($autoloadPath);
+        if (!is_dir($autoloadDir)) {
+            mkdir($autoloadDir, 0755, true);
+        }
         file_put_contents($autoloadPath, $php);
 
         clearstatcache(true, $autoloadPath);
@@ -200,7 +253,7 @@ class CompileModuleCommand extends Command
 
     private function verifyEntryAutoload(array $modules): void
     {
-        $autoloadPath = $this->app->basePath() . '/storage/modules-autoload.php';
+        $autoloadPath = ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath());
 
         if (!file_exists($autoloadPath)) {
             throw new \RuntimeException('module autoloader not generated');
@@ -253,4 +306,15 @@ class CompileModuleCommand extends Command
             throw new \RuntimeException('unable to autoload entry class for: ' . implode(', ', $missing));
         }
     }
+
+    private function relativeToBase(string $path): string
+    {
+        $base = $this->app->basePath();
+        if (str_starts_with($path, $base . '/')) {
+            return substr($path, strlen($base) + 1);
+        }
+
+        return $path;
+    }
+
 }
