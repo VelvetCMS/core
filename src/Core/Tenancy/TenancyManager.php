@@ -40,7 +40,7 @@ final class TenancyManager
             return null;
         }
 
-        $tenantId = env('TENANCY_TENANT', env('TENANT', null));
+        $tenantId = env('TENANCY_TENANT', null);
         if (!is_string($tenantId) || $tenantId === '') {
             $tenantId = self::defaultId($config);
         }

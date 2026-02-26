@@ -115,14 +115,14 @@ That philosophy is what we call **Pragmatic Zero Magic**. You should be able to 
   - **Host**: Map hostnames or subdomains to tenants (`tenancy.host.map`, optional wildcard subdomains).
   - **Path**: Use a path segment as tenant id (`tenancy.path.segment`).
   - **Callback**: Provide a custom resolver that implements `TenantResolverInterface`.
-- **Tenant-aware paths** (when enabled):
-  - Content: user/tenants/<tenant>/content
-  - Views: user/tenants/<tenant>/views
-  - Storage: storage/tenants/<tenant>
-  - Modules: user/tenants/<tenant>/modules
+- **Works with**:
+  - Content and views (tenant-scoped roots under `user/tenants/<tenant>/...`)
+  - Storage and modules (tenant-scoped roots/artifacts)
+  - Cache/session isolation per tenant
+  - Database-per-tenant setups when desired
 - **Isolation**: Cache prefixing and tenant-scoped storage prevent cross-tenant collisions.
 - **Sessions**: Path-based tenancy scopes cookies to the tenant path automatically.
-- **CLI**: Set a tenant via $TENANCY_TENANT (or $TENANT) for commands.
+- **CLI**: Set tenant context via `$TENANCY_TENANT` or `--tenant=<id>`; use `--all-tenants` for tenancy-aware orchestration commands.
 
 ---
 
