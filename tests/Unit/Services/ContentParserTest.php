@@ -4,22 +4,16 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Services;
 
-use VelvetCMS\Drivers\Cache\FileCache;
-use VelvetCMS\Services\ContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ContentParserTest extends TestCase
 {
-    private function parser(): ContentParser
+    use CreatesContentParser;
+
+    private function parser(): \VelvetCMS\Services\ContentParser
     {
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test',
-        ]);
-
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser(['html_input' => 'allow']);
-
-        return new ContentParser($cache, $commonMark);
+        return $this->makeContentParser(['html_input' => 'allow']);
     }
 
     public function test_frontmatter_is_extracted(): void

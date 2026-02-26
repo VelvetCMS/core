@@ -4,47 +4,32 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Content;
 
-use PDO;
 use VelvetCMS\Database\Connection;
-use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\HybridDriver;
 use VelvetCMS\Models\Page;
-use VelvetCMS\Services\ContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class HybridDriverTest extends TestCase
 {
+    use CreatesContentParser;
+    use CreatesTestDatabase;
+
     private Connection $db;
 
     private function makeConnection(): Connection
     {
-        $dbPath = $this->tmpDir . '/db.sqlite';
-        $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->exec('CREATE TABLE pages (slug TEXT PRIMARY KEY, title TEXT, content TEXT, status TEXT, layout TEXT, excerpt TEXT, meta TEXT, created_at TEXT, updated_at TEXT, published_at TEXT)');
-
-        $this->db = new Connection([
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $dbPath,
-                ],
-            ],
-        ]);
+        $this->db = $this->makeSqliteConnection('db');
+        $this->db->getPdo()->exec('CREATE TABLE pages (slug TEXT PRIMARY KEY, title TEXT, content TEXT, status TEXT, layout TEXT, excerpt TEXT, meta TEXT, created_at TEXT, updated_at TEXT, published_at TEXT)');
 
         return $this->db;
     }
 
     private function driver(): HybridDriver
     {
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test',
-        ]);
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
-
         return new HybridDriver(
-            new ContentParser($cache, $commonMark),
+            $this->makeContentParser(),
             $this->makeConnection(),
             $this->tmpDir . '/content/pages'
         );
@@ -89,7 +74,7 @@ final class HybridDriverTest extends TestCase
         // Check DB contains metadata
         $stmt = $this->db->getPdo()->prepare('SELECT title, status FROM pages WHERE slug = ?');
         $stmt->execute(['hybrid-test']);
-        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         $this->assertSame('Hybrid Test', $row['title']);
         $this->assertSame('published', $row['status']);

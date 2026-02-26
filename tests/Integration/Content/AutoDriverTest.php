@@ -4,60 +4,40 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Content;
 
-use PDO;
 use VelvetCMS\Database\Connection;
-use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\AutoDriver;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Drivers\Content\HybridDriver;
 use VelvetCMS\Models\Page;
-use VelvetCMS\Services\ContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class AutoDriverTest extends TestCase
 {
+    use CreatesContentParser;
+    use CreatesTestDatabase;
+
     private function makeConnection(): Connection
     {
-        $dbPath = $this->tmpDir . '/db.sqlite';
-        $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->exec('CREATE TABLE pages (slug TEXT PRIMARY KEY, title TEXT, content TEXT, status TEXT, layout TEXT, excerpt TEXT, meta TEXT, created_at TEXT, updated_at TEXT, published_at TEXT)');
+        $conn = $this->makeSqliteConnection('db');
+        $conn->getPdo()->exec('CREATE TABLE pages (slug TEXT PRIMARY KEY, title TEXT, content TEXT, status TEXT, layout TEXT, excerpt TEXT, meta TEXT, created_at TEXT, updated_at TEXT, published_at TEXT)');
 
-        return new Connection([
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $dbPath,
-                ],
-            ],
-        ]);
+        return $conn;
     }
 
     private function makeFileDriver(): FileDriver
     {
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test',
-        ]);
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
-        $parser = new ContentParser($cache, $commonMark);
-        $contentPath = $this->tmpDir . '/content/pages';
-
-        return new FileDriver($parser, $contentPath);
+        return new FileDriver($this->makeContentParser(), $this->tmpDir . '/content/pages');
     }
 
     private function makeHybridDriver(): HybridDriver
     {
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test',
-        ]);
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
-        $parser = new ContentParser($cache, $commonMark);
-        $conn = $this->makeConnection();
-        $contentPath = $this->tmpDir . '/content/pages';
-
-        return new HybridDriver($parser, $conn, $contentPath);
+        return new HybridDriver(
+            $this->makeContentParser(),
+            $this->makeConnection(),
+            $this->tmpDir . '/content/pages',
+        );
     }
 
     private function makeAutoDriver(int $threshold = 5, ?int $existingPages = null): AutoDriver

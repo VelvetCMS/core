@@ -7,10 +7,13 @@ namespace VelvetCMS\Tests\Unit\Database;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\Migrations\MigrationRepository;
 use VelvetCMS\Database\Schema\Schema;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class MigrationRepositoryTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private Connection $connection;
     private MigrationRepository $repository;
 
@@ -18,17 +21,7 @@ final class MigrationRepositoryTest extends TestCase
     {
         parent::setUp();
 
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $this->tmpDir . '/migrations-test.sqlite',
-                ],
-            ],
-        ];
-
-        $this->connection = new Connection($config);
+        $this->connection = $this->makeSqliteConnection('migrations-test');
         Schema::setConnection($this->connection);
         $this->repository = new MigrationRepository($this->connection);
     }

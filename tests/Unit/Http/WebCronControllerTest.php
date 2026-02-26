@@ -23,9 +23,7 @@ final class WebCronControllerTest extends TestCase
 
         $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
 
-        ob_start();
-        $controller->run();
-        $output = ob_get_clean();
+        [, $output] = $this->captureOutput(fn () => $controller->run());
 
         $this->assertSame(403, http_response_code());
         $this->assertStringContainsString('Forbidden', $output);
@@ -52,9 +50,7 @@ final class WebCronControllerTest extends TestCase
 
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
 
-        ob_start();
-        $controller->run();
-        $output = ob_get_clean();
+        [, $output] = $this->captureOutput(fn () => $controller->run());
 
         $this->assertSame(2, $ran);
         $this->assertStringContainsString('Ran 2 scheduled tasks.', $output);
@@ -73,9 +69,7 @@ final class WebCronControllerTest extends TestCase
 
         $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
 
-        ob_start();
-        $controller->run();
-        $output = ob_get_clean();
+        [, $output] = $this->captureOutput(fn () => $controller->run());
 
         $this->assertSame(403, http_response_code());
         $this->assertStringContainsString('IP not allowed', $output);
@@ -108,9 +102,7 @@ final class WebCronControllerTest extends TestCase
 
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
 
-        ob_start();
-        $controller->run();
-        $output = ob_get_clean();
+        [, $output] = $this->captureOutput(fn () => $controller->run());
 
         $this->assertSame(1, $ran);
         $this->assertStringContainsString('Ran 1 scheduled tasks.', $output);
@@ -132,15 +124,11 @@ final class WebCronControllerTest extends TestCase
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
 
         $_GET = ['token' => 'secret'];
-        ob_start();
-        $controller->run();
-        ob_end_clean();
+        $this->captureOutput(fn () => $controller->run());
 
         $_GET = ['token' => 'secret'];
         http_response_code(200);
-        ob_start();
-        $controller->run();
-        $output = ob_get_clean();
+        [, $output] = $this->captureOutput(fn () => $controller->run());
 
         $this->assertSame(429, http_response_code());
         $this->assertStringContainsString('Too Many Requests', $output);

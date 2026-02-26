@@ -4,23 +4,18 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Content;
 
-use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Models\Page;
-use VelvetCMS\Services\ContentParser;
+use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class FileDriverTest extends TestCase
 {
+    use CreatesContentParser;
+
     private function driver(): FileDriver
     {
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test',
-        ]);
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
-
-        return new FileDriver(new ContentParser($cache, $commonMark), $this->tmpDir . '/content/pages');
+        return new FileDriver($this->makeContentParser(), $this->tmpDir . '/content/pages');
     }
 
     public function test_save_load_and_delete_page(): void

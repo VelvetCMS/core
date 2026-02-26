@@ -7,27 +7,20 @@ namespace VelvetCMS\Tests\Unit\Database;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\Schema\Blueprint;
 use VelvetCMS\Database\Schema\Schema;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class SchemaBuilderTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private Connection $connection;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $this->tmpDir . '/schema-test.sqlite',
-                ],
-            ],
-        ];
-
-        $this->connection = new Connection($config);
+        $this->connection = $this->makeSqliteConnection('schema-test');
         Schema::setConnection($this->connection);
     }
 

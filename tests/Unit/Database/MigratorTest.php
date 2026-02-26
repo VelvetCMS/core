@@ -8,10 +8,13 @@ use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\Migrations\MigrationRepository;
 use VelvetCMS\Database\Migrations\Migrator;
 use VelvetCMS\Database\Schema\Schema;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class MigratorTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private Connection $connection;
     private MigrationRepository $repository;
     private Migrator $migrator;
@@ -21,19 +24,10 @@ final class MigratorTest extends TestCase
     {
         parent::setUp();
 
-        $dbPath = $this->tmpDir . '/test.sqlite';
         $this->migrationsPath = $this->tmpDir . '/migrations';
         mkdir($this->migrationsPath, 0755, true);
 
-        $this->connection = new Connection([
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $dbPath,
-                ],
-            ],
-        ]);
+        $this->connection = $this->makeSqliteConnection();
 
         Schema::setConnection($this->connection);
 

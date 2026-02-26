@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Support;
 
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use VelvetCMS\Drivers\Cache\FileCache;
 
 /**
  * Base test case for rewritten suite.
@@ -104,6 +105,31 @@ abstract class TestCase extends BaseTestCase
         if (!is_dir($path)) {
             mkdir($path, 0777, true);
         }
+    }
+
+    /**
+     * Create a FileCache instance pointed at the test temp directory.
+     */
+    protected function makeFileCache(string $prefix = 'test'): FileCache
+    {
+        return new FileCache([
+            'path' => $this->tmpDir . '/cache',
+            'prefix' => $prefix,
+        ]);
+    }
+
+    /**
+     * Run a callable while capturing its output.
+     *
+     * @return array{0: mixed, 1: string}  [$returnValue, $capturedOutput]
+     */
+    protected function captureOutput(callable $callback): array
+    {
+        ob_start();
+        $result = $callback();
+        $output = (string) ob_get_clean();
+
+        return [$result, $output];
     }
 
     protected function rrmdir(string $dir): void

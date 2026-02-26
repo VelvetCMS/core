@@ -5,27 +5,20 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Database;
 
 use VelvetCMS\Database\Connection;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ConnectionTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private Connection $connection;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $this->tmpDir . '/connection-test.sqlite',
-                ],
-            ],
-        ];
-
-        $this->connection = new Connection($config);
+        $this->connection = $this->makeSqliteConnection('connection-test');
     }
 
     public function test_get_pdo_returns_pdo_instance(): void

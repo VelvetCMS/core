@@ -20,10 +20,7 @@ final class TagManagerTest extends TestCase
         $this->cachePath = $this->tmpDir . '/cache_tags';
         mkdir($this->cachePath, 0755, true);
 
-        $this->cache = new FileCache([
-            'path' => $this->cachePath,
-            'prefix' => 'tag_',
-        ]);
+        $this->cache = $this->makeFileCache('tag_');
 
         $this->tags = new CacheTagManager($this->cache);
     }

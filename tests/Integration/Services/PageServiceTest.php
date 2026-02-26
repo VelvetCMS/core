@@ -5,16 +5,17 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Integration\Services;
 
 use VelvetCMS\Core\EventDispatcher;
-use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Models\Page;
-use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Services\PageService;
 use VelvetCMS\Support\Cache\CacheTagManager;
+use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class PageServiceTest extends TestCase
 {
+    use CreatesContentParser;
+
     private PageService $service;
     private EventDispatcher $events;
     private string $contentPath;
@@ -29,14 +30,10 @@ final class PageServiceTest extends TestCase
         }
 
         $this->events = new EventDispatcher();
-        $cache = new FileCache([
-            'path' => $this->tmpDir . '/cache',
-            'prefix' => 'test_'
-        ]);
+        $cache = $this->makeFileCache('test_');
         $tagManager = new CacheTagManager($cache);
 
-        $commonMark = new \VelvetCMS\Services\Parsers\CommonMarkParser();
-        $parser = new ContentParser($cache, $commonMark);
+        $parser = $this->makeContentParser();
         $driver = new FileDriver($parser, $this->contentPath);
 
         $this->service = new PageService($driver, $this->events, $cache, $tagManager);

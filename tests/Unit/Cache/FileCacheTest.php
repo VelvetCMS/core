@@ -23,10 +23,7 @@ final class FileCacheTest extends TestCase
 
     public function test_it_can_store_and_restore_objects(): void
     {
-        $cache = new FileCache([
-            'path' => $this->cachePath,
-            'prefix' => 'test_',
-        ]);
+        $cache = $this->makeFileCache('test_');
 
         $page = new Page('cached', 'Cached Page', 'Content');
 
@@ -40,10 +37,7 @@ final class FileCacheTest extends TestCase
 
     public function test_clear_removes_nested_directories(): void
     {
-        $cache = new FileCache([
-            'path' => $this->cachePath,
-            'prefix' => 'test_',
-        ]);
+        $cache = $this->makeFileCache('test_');
 
         $cache->set('foo', 'bar', 300);
 

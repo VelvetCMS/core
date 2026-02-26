@@ -4,15 +4,17 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Content;
 
-use PDO;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Content\DBDriver;
 use VelvetCMS\Exceptions\NotFoundException;
 use VelvetCMS\Models\Page;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class DBDriverTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private DBDriver $driver;
     private Connection $db;
 
@@ -20,35 +22,8 @@ final class DBDriverTest extends TestCase
     {
         parent::setUp();
 
-        $dbPath = $this->tmpDir . '/db.sqlite';
-        $pdo = new PDO('sqlite:' . $dbPath);
-
-        // Create pages table
-        $pdo->exec("
-            CREATE TABLE pages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                slug VARCHAR(255) NOT NULL UNIQUE,
-                title VARCHAR(255) NOT NULL,
-                content TEXT NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'draft',
-                layout VARCHAR(100) DEFAULT NULL,
-                excerpt TEXT DEFAULT NULL,
-                meta TEXT DEFAULT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL,
-                published_at DATETIME DEFAULT NULL
-            )
-        ");
-
-        $this->db = new Connection([
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $dbPath,
-                ],
-            ],
-        ]);
+        $this->db = $this->makeSqliteConnection('db');
+        $this->createPagesTable($this->db->getPdo());
 
         $this->driver = new DBDriver($this->db);
     }

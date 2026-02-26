@@ -4,13 +4,15 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Data;
 
-use PDO;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Data\AutoDataStore;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class AutoDataStoreTest extends TestCase
 {
+    use CreatesTestDatabase;
+
     private AutoDataStore $store;
     private Connection $db;
     private string $fileDataPath;
@@ -20,30 +22,9 @@ final class AutoDataStoreTest extends TestCase
         parent::setUp();
 
         $this->fileDataPath = $this->tmpDir . '/data';
-        $dbPath = $this->tmpDir . '/data.sqlite';
 
-        $pdo = new PDO('sqlite:' . $dbPath);
-        $pdo->exec('
-            CREATE TABLE data_store (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                collection VARCHAR(255) NOT NULL,
-                key VARCHAR(255) NOT NULL,
-                data TEXT NOT NULL,
-                created_at DATETIME,
-                updated_at DATETIME,
-                UNIQUE(collection, key)
-            )
-        ');
-
-        $this->db = new Connection([
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $dbPath,
-                ],
-            ],
-        ]);
+        $this->db = $this->makeSqliteConnection('data');
+        $this->createDataStoreTable($this->db->getPdo());
 
         $this->store = new AutoDataStore($this->db, $this->fileDataPath);
     }

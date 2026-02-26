@@ -6,10 +6,13 @@ namespace VelvetCMS\Tests\Unit\Scheduling;
 
 use VelvetCMS\Core\Application;
 use VelvetCMS\Scheduling\Task;
+use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class TaskTest extends TestCase
 {
+    use ReflectionHelpers;
+
     // === Cron Expression: Wildcard ===
 
     public function test_wildcard_always_matches(): void
@@ -287,10 +290,8 @@ final class TaskTest extends TestCase
     private function createTaskWithExpression(string $expression): Task
     {
         $task = new Task(fn () => null);
-        // Use reflection to set the expression directly
-        $ref = new \ReflectionClass($task);
-        $prop = $ref->getProperty('expression');
-        $prop->setValue($task, $expression);
+        $this->setPrivateProperty($task, 'expression', $expression);
+
         return $task;
     }
 }
