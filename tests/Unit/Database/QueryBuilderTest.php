@@ -4,30 +4,24 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Database;
 
-use ReflectionClass;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Database\QueryBuilder;
+use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
+use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class QueryBuilderTest extends TestCase
 {
+    use CreatesTestDatabase;
+    use ReflectionHelpers;
+
     private Connection $connection;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $config = [
-            'default' => 'sqlite',
-            'connections' => [
-                'sqlite' => [
-                    'driver' => 'sqlite',
-                    'database' => $this->tmpDir . '/test.sqlite',
-                ],
-            ],
-        ];
-
-        $this->connection = new Connection($config);
+        $this->connection = $this->makeSqliteConnection();
 
         // Create test table
         $this->connection->statement('CREATE TABLE IF NOT EXISTS users (
@@ -54,9 +48,7 @@ final class QueryBuilderTest extends TestCase
 
     private function bindings(QueryBuilder $qb): array
     {
-        $ref = new ReflectionClass($qb);
-        $prop = $ref->getProperty('bindings');
-        return $prop->getValue($qb);
+        return $this->getPrivateProperty($qb, 'bindings');
     }
 
     // === SELECT Tests ===

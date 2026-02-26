@@ -418,6 +418,25 @@ class QueryBuilder
 
     public function insertGetId(array $data): int
     {
+        if ($this->connection->getDriver() === 'pgsql') {
+            foreach (array_keys($data) as $column) {
+                $this->assertColumnReference((string) $column);
+            }
+
+            $columns = array_keys($data);
+            $placeholders = array_fill(0, count($columns), '?');
+
+            $sql = sprintf(
+                'INSERT INTO %s (%s) VALUES (%s) RETURNING id',
+                $this->table,
+                implode(', ', $columns),
+                implode(', ', $placeholders)
+            );
+
+            $rows = $this->connection->query($sql, array_values($data));
+            return (int) ($rows[0]['id'] ?? 0);
+        }
+
         $this->insert($data);
         return (int) $this->connection->lastInsertId();
     }
