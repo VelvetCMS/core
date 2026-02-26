@@ -9,7 +9,7 @@ return [
     /** VelvetCMS Core version information */
     'core' => [
         'version' => '1.10.0',
-        'release_date' => '2026-02-24',
+        'release_date' => '2026-02-26',
         'stability' => 'stable',
         'php' => '^8.4',
         'api_version' => '1',
