@@ -25,4 +25,7 @@ interface ContentDriver
     public function exists(string $slug): bool;
 
     public function count(array $filters = []): int;
+
+    /** Return the last-modified timestamp for a page, or null if it does not exist. */
+    public function lastModified(string $slug): ?int;
 }

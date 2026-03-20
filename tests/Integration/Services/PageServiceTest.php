@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Services;
 
+use VelvetCMS\Content\Index\JsonPageIndex;
+use VelvetCMS\Content\Index\PageIndexer;
 use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Models\Page;
@@ -34,7 +36,12 @@ final class PageServiceTest extends TestCase
         $tagManager = new CacheTagManager($cache);
 
         $parser = $this->makeContentParser();
-        $driver = new FileDriver($parser, $this->contentPath);
+        $driver = new FileDriver(
+            $parser,
+            new JsonPageIndex($this->pageIndexJsonPath()),
+            new PageIndexer(),
+            $this->contentPath,
+        );
 
         $this->service = new PageService($driver, $this->events, $cache, $tagManager);
     }

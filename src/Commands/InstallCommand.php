@@ -49,26 +49,23 @@ class InstallCommand extends Command
             }
         }
 
-        $this->step(1, 6, 'Creating directories');
+        $this->step(1, 5, 'Creating directories');
         $this->createDirectories();
 
-        $this->step(2, 6, 'Database configuration');
+        $this->step(2, 5, 'Database configuration');
         $connection = $this->configureDatabase();
 
-        $this->step(3, 6, 'Database migrations');
+        $this->step(3, 5, 'Database migrations');
         if (!$this->option('no-migrate')) {
             $this->runMigrations($connection);
         } else {
             $this->line('  Skipped (--no-migrate)');
         }
 
-        $this->step(4, 6, 'Content storage');
-        $this->configureContentDriver();
-
-        $this->step(5, 6, 'Cache configuration');
+        $this->step(4, 5, 'Cache configuration');
         $this->configureCacheDriver();
 
-        $this->step(6, 6, 'Additional options');
+        $this->step(5, 5, 'Additional options');
         $this->configureAdditionalOptions();
 
         if (!$this->option('no-sample')) {
@@ -109,6 +106,7 @@ class InstallCommand extends Command
             'storage/cache',
             'storage/logs',
             'storage/sessions',
+            'storage/index',
             'user/modules',
             'user/config',
             'user/content/pages',
@@ -247,28 +245,6 @@ class InstallCommand extends Command
         } catch (\Throwable $e) {
             $this->warning("  Migration failed: {$e->getMessage()}");
         }
-    }
-
-    private function configureContentDriver(): void
-    {
-        $drivers = ['file', 'db', 'hybrid', 'auto'];
-        $default = 'file';
-
-        if ($this->interactive) {
-            $this->line('  Available drivers:');
-            $this->line("    \033[1m[1] file\033[0m   - Markdown files with frontmatter (recommended)");
-            $this->line('    [2] db     - All content in database');
-            $this->line('    [3] hybrid - Metadata in DB, content in files');
-            $this->line('    [4] auto   - Switches based on page count');
-
-            $choice = (int) $this->ask('  Select content driver', '1');
-            $driver = $drivers[$choice - 1] ?? $default;
-        } else {
-            $driver = $default;
-        }
-
-        $this->config['content.driver'] = $driver;
-        $this->success("  Content driver: {$driver}");
     }
 
     private function configureCacheDriver(): void
@@ -450,10 +426,6 @@ class InstallCommand extends Command
 
         if (isset($this->config['cache.default'])) {
             $this->updateConfigValue('cache.php', "'default'", $this->config['cache.default']);
-        }
-
-        if (isset($this->config['content.driver'])) {
-            $this->updateConfigValue('content.php', "'driver'", $this->config['content.driver']);
         }
 
         if (isset($this->config['content.parser.driver'])) {

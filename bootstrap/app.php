@@ -6,16 +6,17 @@ declare(strict_types=1);
  * Shared application bootstrap for HTTP, CLI, and tests.
  */
 
+use VelvetCMS\Content\Index\JsonPageIndex;
+use VelvetCMS\Content\Index\PageIndex;
+use VelvetCMS\Content\Index\PageIndexer;
+use VelvetCMS\Content\Index\SqlitePageIndex;
 use VelvetCMS\Contracts\CacheDriver;
 use VelvetCMS\Contracts\ContentDriver;
 use VelvetCMS\Contracts\DataStore;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Database\Connection;
-use VelvetCMS\Drivers\Content\AutoDriver;
-use VelvetCMS\Drivers\Content\DBDriver;
 use VelvetCMS\Drivers\Content\FileDriver;
-use VelvetCMS\Drivers\Content\HybridDriver;
 use VelvetCMS\Drivers\Data\AutoDataStore;
 use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Services\PageService;
@@ -44,27 +45,31 @@ $app->singleton('data', function () use ($app) {
 $app->alias('data', DataStore::class);
 $app->alias('data', AutoDataStore::class);
 
-// Content driver selection
-$app->singleton('content.driver', function () use ($app) {
-    $driver = config('content.driver', 'file');
-    $parser = $app->make(ContentParser::class);
-    $contentPath = config('content.drivers.file.path', content_path('pages'));
+$app->singleton(PageIndexer::class, function () {
+    return new PageIndexer();
+});
 
-    // Get database connection (lazy - only used by db/hybrid/auto drivers)
-    $getDb = static fn (): Connection => $app->make(Connection::class);
+$app->singleton(PageIndex::class, function () {
+    $driver = (string) config('content.drivers.file.index.driver', 'json');
 
     return match ($driver) {
-        'file' => new FileDriver($parser, $contentPath),
-        'db' => new DBDriver($getDb()),
-        'hybrid' => new HybridDriver($parser, $getDb(), $contentPath),
-        'auto' => new AutoDriver(
-            new FileDriver($parser, $contentPath),
-            new HybridDriver($parser, $getDb(), $contentPath),
-            $getDb(),
-            (int) config('content.drivers.auto.threshold', 100)
+        'sqlite' => new SqlitePageIndex(
+            (string) config('content.drivers.file.index.sqlite.path', storage_path('index/page-index.sqlite')),
         ),
-        default => new FileDriver($parser, $contentPath),
+        default => new JsonPageIndex(
+            (string) config('content.drivers.file.index.json.path', storage_path('index/page-index.json')),
+        ),
     };
+});
+
+// File-native page content
+$app->singleton('content.driver', function () use ($app) {
+    return new FileDriver(
+        $app->make(ContentParser::class),
+        $app->make(PageIndex::class),
+        $app->make(PageIndexer::class),
+        config('content.drivers.file.path', content_path('pages')),
+    );
 });
 $app->alias('content.driver', ContentDriver::class);
 

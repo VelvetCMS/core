@@ -6,36 +6,21 @@ declare(strict_types=1);
  * Content Configuration
  */
 return [
-    /** Default content driver: file, db, hybrid, auto */
-    'driver' => env('CONTENT_DRIVER', 'file'),
-
-    /** Content driver configurations */
+    /** File-native page content configuration */
     'drivers' => [
-        /** Hybrid: metadata in DB, content in files */
-        'hybrid' => [
-            'content' => 'file',
-            'metadata' => 'db',
-            'cache_ttl' => 300,
-        ],
-
-        /** File: Markdown files with frontmatter */
         'file' => [
             'path' => content_path('pages'),
+            'index' => [
+                'driver' => env('CONTENT_PAGE_INDEX_DRIVER', 'json'),
+                'json' => [
+                    'path' => storage_path('index/page-index.json'),
+                ],
+                'sqlite' => [
+                    'path' => storage_path('index/page-index.sqlite'),
+                ],
+            ],
             'cache_enabled' => true,
             'cache_ttl' => 600,
-        ],
-
-        /** Database: All content in database */
-        'db' => [
-            'table' => 'pages',
-            'cache_ttl' => 300,
-        ],
-
-        /** Auto: Switches driver based on page count threshold */
-        'auto' => [
-            'threshold' => 100,
-            'small_site' => 'file',
-            'large_site' => 'hybrid',
         ],
     ],
 

@@ -9,7 +9,6 @@ require_once __DIR__ . '/../vendor/autoload.php';
 $_ENV['APP_ENV'] = 'testing';
 $_ENV['APP_DEBUG'] = 'true';
 $_ENV['CACHE_DRIVER'] = 'file';
-$_ENV['CONTENT_DRIVER'] = 'file';
 
 // Define base path for tests
 define('VELVET_BASE_PATH', dirname(__DIR__));

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Content;
 
+use VelvetCMS\Content\Index\JsonPageIndex;
+use VelvetCMS\Content\Index\PageIndexer;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Models\Page;
 use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
@@ -15,7 +17,14 @@ final class FileDriverTest extends TestCase
 
     private function driver(): FileDriver
     {
-        return new FileDriver($this->makeContentParser(), $this->tmpDir . '/content/pages');
+        $contentPath = $this->tmpDir . '/content/pages';
+
+        return new FileDriver(
+            $this->makeContentParser(),
+            new JsonPageIndex($this->pageIndexJsonPath()),
+            new PageIndexer(),
+            $contentPath,
+        );
     }
 
     public function test_save_load_and_delete_page(): void
@@ -71,5 +80,45 @@ final class FileDriverTest extends TestCase
 
         $this->assertSame('Updated', $loaded->title);
         $this->assertSame('Updated content', $loaded->content);
+    }
+
+    public function test_list_returns_metadata_only_pages(): void
+    {
+        $driver = $this->driver();
+        $driver->save(new Page('page-a', 'Page A', 'Content of A', 'published'));
+        $driver->save(new Page('page-b', 'Page B', 'Content of B', 'draft'));
+
+        $all = $driver->list();
+        $this->assertSame(2, $all->count());
+
+        $published = $driver->list(['status' => 'published']);
+        $this->assertSame(1, $published->count());
+        $this->assertSame('Page A', $published->first()->title);
+
+        // list() returns metadata-only pages (no content parsing)
+        $this->assertSame('', $published->first()->content);
+    }
+
+    public function test_load_returns_fully_hydrated_page(): void
+    {
+        $driver = $this->driver();
+        $driver->save(new Page('hydrated', 'Hydrated', 'Some **bold** text', 'published'));
+
+        $loaded = $driver->load('hydrated');
+        $this->assertSame('Hydrated', $loaded->title);
+        $this->assertNotEmpty($loaded->content);
+        $this->assertNotEmpty($loaded->html());
+    }
+
+    public function test_count_with_filters(): void
+    {
+        $driver = $this->driver();
+        $driver->save(new Page('pub-1', 'Published 1', 'Content', 'published'));
+        $driver->save(new Page('pub-2', 'Published 2', 'Content', 'published'));
+        $driver->save(new Page('draft-1', 'Draft 1', 'Content', 'draft'));
+
+        $this->assertSame(3, $driver->count());
+        $this->assertSame(2, $driver->count(['status' => 'published']));
+        $this->assertSame(1, $driver->count(['status' => 'draft']));
     }
 }

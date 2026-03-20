@@ -30,28 +30,6 @@ trait CreatesTestDatabase
     }
 
     /**
-     * Create the canonical `pages` table (full schema with constraints).
-     */
-    protected function createPagesTable(\PDO $pdo): void
-    {
-        $pdo->exec("
-            CREATE TABLE pages (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                slug VARCHAR(255) NOT NULL UNIQUE,
-                title VARCHAR(255) NOT NULL,
-                content TEXT NOT NULL,
-                status VARCHAR(20) NOT NULL DEFAULT 'draft',
-                layout VARCHAR(100) DEFAULT NULL,
-                excerpt TEXT DEFAULT NULL,
-                meta TEXT DEFAULT NULL,
-                created_at DATETIME NOT NULL,
-                updated_at DATETIME NOT NULL,
-                published_at DATETIME DEFAULT NULL
-            )
-        ");
-    }
-
-    /**
      * Create the `data_store` table used by DatabaseDataStore.
      */
     protected function createDataStoreTable(\PDO $pdo): void

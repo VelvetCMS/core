@@ -123,11 +123,9 @@ class DiagnoseCommand extends Command
 
     private function inspectContentDriver(): array
     {
-        $driverClass = $this->contentDriver::class;
-
         try {
             $count = $this->contentDriver->count();
-            return ['ok' => true, 'message' => sprintf('%s (%d pages)', $driverClass, $count)];
+            return ['ok' => true, 'message' => sprintf('File-based content (%d pages)', $count)];
         } catch (Throwable $e) {
             return ['ok' => false, 'message' => 'Content driver error: ' . $e->getMessage()];
         }

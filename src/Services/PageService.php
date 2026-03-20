@@ -23,10 +23,21 @@ class PageService
 
     public function load(string $slug): Page
     {
-        return $this->cache->remember("page:$slug", 300, function () use ($slug) {
+        $mtime = $this->driver->lastModified($slug);
+
+        if ($mtime === null || !$this->cacheEnabled()) {
             $this->events->dispatch('page.loading', $slug);
             $page = $this->driver->load($slug);
             $this->events->dispatch('page.loaded', $page);
+
+            return $page;
+        }
+
+        return $this->cache->remember("page:{$slug}:{$mtime}", $this->cacheTtl(), function () use ($slug) {
+            $this->events->dispatch('page.loading', $slug);
+            $page = $this->driver->load($slug);
+            $this->events->dispatch('page.loaded', $page);
+
             return $page;
         });
     }
@@ -38,20 +49,31 @@ class PageService
             $page->createdAt = new \DateTime();
         }
         $page->updatedAt = new \DateTime();
+
+        $oldMtime = $this->driver->lastModified($page->slug);
+
         $result = $this->driver->save($page);
 
-        $this->cache->delete("page:{$page->slug}");
-        $this->cacheTags->flush('pages:list');
+        if ($result) {
+            if ($oldMtime !== null) {
+                $this->cache->delete("page:{$page->slug}:{$oldMtime}");
+            }
+            $this->cacheTags->flush('pages:list');
+            $this->events->dispatch('page.saved', $page);
+        }
 
-        $this->events->dispatch('page.saved', $page);
         return $result;
     }
 
     public function list(array $filters = []): Collection
     {
+        if (!$this->cacheEnabled()) {
+            return $this->driver->list($filters);
+        }
+
         $cacheKey = $this->makeListCacheKey($filters);
 
-        return $this->cacheTags->remember('pages:list', $cacheKey, 300, function () use ($filters) {
+        return $this->cacheTags->remember('pages:list', $cacheKey, $this->cacheTtl(), function () use ($filters) {
             return $this->driver->list($filters);
         });
     }
@@ -59,12 +81,18 @@ class PageService
     public function delete(string $slug): bool
     {
         $this->events->dispatch('page.deleting', $slug);
+
+        $oldMtime = $this->driver->lastModified($slug);
+
         $result = $this->driver->delete($slug);
 
-        $this->cache->delete("page:$slug");
+        if ($oldMtime !== null) {
+            $this->cache->delete("page:{$slug}:{$oldMtime}");
+        }
         $this->cacheTags->flush('pages:list');
 
         $this->events->dispatch('page.deleted', $slug);
+
         return $result;
     }
 
@@ -83,9 +111,9 @@ class PageService
         return $this->list(['status' => 'draft']);
     }
 
-    public function count(): int
+    public function count(array $filters = []): int
     {
-        return $this->list()->count();
+        return $this->driver->count($filters);
     }
 
     public function recent(int $limit = 5): Collection
@@ -95,6 +123,16 @@ class PageService
             'order' => 'desc',
             'limit' => $limit,
         ]);
+    }
+
+    private function cacheEnabled(): bool
+    {
+        return (bool) config('content.drivers.file.cache_enabled', true);
+    }
+
+    private function cacheTtl(): int
+    {
+        return (int) config('content.drivers.file.cache_ttl', 300);
     }
 
     private function makeListCacheKey(array $filters): string

@@ -33,11 +33,12 @@ abstract class TestCase extends BaseTestCase
         $this->rrmdir($this->tmpDir);
         $this->resetGlobals();
 
-        // Cleanup FileDriver index
-        if (function_exists('storage_path')) {
-            $indexPath = storage_path('cache/file-driver-index.json');
-            if (file_exists($indexPath)) {
-                @unlink($indexPath);
+        if (function_exists('config')) {
+            foreach (['content.drivers.file.index.json.path', 'content.drivers.file.index.sqlite.path'] as $key) {
+                $indexPath = config($key);
+                if (is_string($indexPath) && file_exists($indexPath)) {
+                    @unlink($indexPath);
+                }
             }
         }
 
@@ -70,11 +71,23 @@ abstract class TestCase extends BaseTestCase
             'cache.default' => 'file',
             'cache.drivers.file.path' => $cachePath,
             'cache.prefix' => 'velvet-test',
-            'content.driver' => 'file',
             'content.drivers.file.path' => $contentPath,
+            'content.drivers.file.index.driver' => 'json',
+            'content.drivers.file.index.json.path' => $cachePath . '/page-index.json',
+            'content.drivers.file.index.sqlite.path' => $cachePath . '/page-index.sqlite',
             'view.path' => $viewPath,
             'view.compiled' => 'cache/views',
         ]);
+    }
+
+    protected function pageIndexJsonPath(): string
+    {
+        return $this->tmpDir . '/cache/page-index.json';
+    }
+
+    protected function pageIndexSqlitePath(): string
+    {
+        return $this->tmpDir . '/cache/page-index.sqlite';
     }
 
     /**
