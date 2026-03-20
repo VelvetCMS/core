@@ -75,21 +75,68 @@ class ContentParser
     {
         $lines = explode("\n", $content);
         $type = 'markdown';
+        $componentName = null;
         $buffer = [];
         $html = '';
 
         foreach ($lines as $line) {
-            if (preg_match('/^@([a-z]+)\s*$/i', $line, $m)) {
+            // Match @component('name') opening
+            if (preg_match("/^@component\(['\"]([a-zA-Z0-9._-]+)['\"]\)\s*$/i", $line, $m)) {
+                // Flush current buffer
+                $html .= $this->processBlock($type, implode("\n", $buffer));
+                $type = 'component';
+                $componentName = $m[1];
+                $buffer = [];
+                continue;
+            }
+
+            // Match @endcomponent closing
+            if ($type === 'component' && preg_match('/^@endcomponent\s*$/i', $line)) {
+                $html .= $this->processComponent($componentName, implode("\n", $buffer));
+                $type = 'markdown';
+                $componentName = null;
+                $buffer = [];
+                continue;
+            }
+
+            // Match regular block directives (@html, @markdown, @md, @text)
+            if ($type !== 'component' && preg_match('/^@([a-z]+)\s*$/i', $line, $m)) {
                 $html .= $this->processBlock($type, implode("\n", $buffer));
                 $type = strtolower($m[1]);
                 $buffer = [];
-            } else {
-                $buffer[] = $line;
+                continue;
             }
+
+            $buffer[] = $line;
         }
 
         $html .= $this->processBlock($type, implode("\n", $buffer));
         return $html;
+    }
+
+    /**
+     * Transform @component YAML block into an @include directive string.
+     * ViewEngine resolves it at render time — no wiring needed.
+     */
+    private function processComponent(string $name, string $content): string
+    {
+        $viewName = str_contains($name, '.') ? $name : 'components.' . $name;
+
+        $props = [];
+        $trimmed = trim($content);
+        if ($trimmed !== '') {
+            try {
+                $parsed = Yaml::parse($trimmed);
+                if (is_array($parsed)) {
+                    $props = $parsed;
+                }
+            } catch (\Exception) {
+                $props = ['content' => $trimmed];
+            }
+        }
+
+        $exported = var_export($props, true);
+        return "@include('{$viewName}', {$exported})\n";
     }
 
     private function processBlock(string $type, string $content): string
