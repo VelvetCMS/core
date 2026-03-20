@@ -2,6 +2,52 @@
 
 This document covers **breaking changes** and required actions when upgrading between versions. For new features and improvements, see the [release notes](https://github.com/VelvetCMS/core/releases).
 
+## 2.0.0
+
+Version 2.0 marks the initial maturity milestone for VelvetCMS Core. Every subsystem — routing, DI, views, content, caching, scheduling, CLI, database, tenancy — is now considered stable. Starting with this release, Core follows **strict Semantic Versioning**.
+
+### What's new
+
+#### Page Index system
+
+File-native page content now uses an indexing layer for fast lookups, filtering, and pagination without re-parsing file headers on every request.
+
+- **Interface:** `VelvetCMS\Content\Index\PageIndex`
+- **Backends:** `JsonPageIndex` (lightweight, default) and `SqlitePageIndex` (scalable, queryable)
+- **Query API:** `PageIndexQuery` — filter by status, paginate, sort by date/title/slug
+- **Sync:** mtime-based change detection; only re-index modified files
+- **CLI:** `page:index:rebuild` command for full reindex
+
+**Config (`config/content.php`):**
+```php
+'index' => [
+    'driver' => env('CONTENT_PAGE_INDEX_DRIVER', 'json'),
+    'json'   => ['path' => storage_path('index/page-index.json')],
+    'sqlite' => ['path' => storage_path('index/page-index.sqlite')],
+],
+```
+
+### Breaking changes
+
+#### Removed content drivers
+
+Core page content is now file-native only.
+
+**Impact:**
+- `DBDriver`, `HybridDriver`, and `AutoDriver` have been removed from Core.
+- `content:migrate` command has been removed.
+- The `pages` table migration has been removed from Core.
+- `config/content.php` no longer accepts a page-content driver switch.
+
+**Action required:**
+1. Remove any old page-content driver overrides from your config.
+2. If you still store Core pages in the legacy `pages` table, export them before upgrading.
+3. Use file-based pages (`.vlt` or `.md`) for Core page content going forward.
+
+**Notes:**
+- Database-backed editorial content belongs in VelvetCMS CMS, not the Core page driver layer.
+- The `ContentDriver` contract remains, but Core now ships only the file-native production implementation.
+
 ## 1.9.0
 
 ### Router pattern compilation hardening
@@ -12,6 +58,9 @@ Route static segments are now regex-escaped before parameter compilation. This f
 - Routes like `/api/v1.0/status` now match literally.
 - If you intentionally relied on regex-like behavior in static route text, update those routes to use explicit parameters.
 
+**Action required:**
+- Review routes containing literal regex-like characters only if you previously depended on the old incorrect matching behavior.
+
 ### QueryBuilder identifier validation
 
 QueryBuilder now validates table/column/operator inputs for standard builder methods (`table`, `where`, joins, grouping, ordering, insert/update/upsert paths).
@@ -20,6 +69,9 @@ QueryBuilder now validates table/column/operator inputs for standard builder met
 - Unsafe identifier strings that previously slipped through now throw `InvalidArgumentException`.
 - Use `RawExpression` / `raw()` for intentionally complex SQL fragments.
 
+**Action required:**
+- Replace unsafe dynamic identifiers with validated names or explicit `RawExpression` usage where complex SQL is intentional.
+
 ### Module lifecycle ownership cleanup
 
 Module bootstrapping is now single-owned by core provider flow (duplicate bootstrap path removed).
@@ -27,6 +79,9 @@ Module bootstrapping is now single-owned by core provider flow (duplicate bootst
 **Impact:**
 - Prevents duplicate module load/register/boot execution.
 - No config changes required.
+
+**Action required:**
+- No action required unless you were relying on duplicate lifecycle execution side effects.
 
 ### Trusted proxy support (opt-in)
 
@@ -50,6 +105,9 @@ Request host/scheme/client IP can now use forwarded headers when the source prox
 2. Set explicit proxy IPs/CIDRs in `trusted_proxies.proxies`.
 3. Keep default header names unless your proxy uses custom ones.
 
+**Action required (if not behind reverse proxy):**
+- No action required. Leave trusted proxies disabled.
+
 ### View string evaluation guard
 
 `ViewEngine::compileString()` and `ViewEngine::safe()` are now controlled by configuration.
@@ -59,7 +117,10 @@ Request host/scheme/client IP can now use forwarded headers when the source prox
 'allow_string_evaluation' => true,
 ```
 
-**Recommendation:**
+**Impact:**
+- Runtime string template evaluation is now explicitly configurable.
+
+**Action required:**
 - For stricter production posture, set `allow_string_evaluation` to `false` unless you explicitly need runtime string templates.
 
 ### WebCron hardening options
@@ -84,6 +145,9 @@ WebCron authorization now uses constant-time token checks and supports optional 
 2. Optionally restrict `cron_allowed_ips`.
 3. Optionally enable `cron_signed_urls` and/or `cron_rate_limit`.
 
+**Action required (if not using `/system/cron`):**
+- No action required. Leave WebCron disabled.
+
 ## 1.7.0
 
 ### MiddlewareInterface namespace change
@@ -98,43 +162,54 @@ use VelvetCMS\Http\Middleware\MiddlewareInterface;
 use VelvetCMS\Contracts\MiddlewareInterface;
 ```
 
+**Impact:**
+- Old imports stop resolving.
+
+**Action required:**
+- Update all `MiddlewareInterface` imports to `VelvetCMS\Contracts\MiddlewareInterface`.
+
 ### Module discovery path change
 
 The module scan pattern in `config/modules.php` changed from `VelvetCMS-*` to `VelvetCMS*`. If you override the `paths` config, update your pattern accordingly.
 
----
+**Impact:**
+- Custom module discovery overrides using the old pattern may miss modules.
+
+**Action required:**
+- Update any overridden module scan patterns from `VelvetCMS-*` to `VelvetCMS*`.
 
 ## 1.5.0
 
 ### AutoDriver behavior change
 
-AutoDriver no longer switches drivers at runtime. It evaluates once at boot and stays on that driver for the entire request lifecycle.
+AutoDriver no longer switched drivers at runtime. It evaluated once at boot and stayed on that driver for the entire request lifecycle.
 
-If you relied on automatic switching, manually migrate content when ready:
+**Impact:**
+- Runtime storage-strategy switching stopped.
+- Threshold-based driver selection became boot-time only.
 
-```bash
-./velvet content:migrate hybrid
-```
+**Action required:**
+- If you are upgrading all the way to `2.0.0`, follow the `2.0.0` section instead. AutoDriver has now been removed entirely.
 
 ### Removed: `content:import`
 
-Use `content:migrate db` instead:
+`content:import` was removed from Core.
 
-```bash
-./velvet content:migrate db --from=file
-```
+**Impact:**
+- The old import command is no longer available.
 
----
+**Action required:**
+- No direct replacement remains in current Core. As of `2.0.0`, Core page content is file-native.
 
 ## 1.3.0
 
 ### Rate limiting rewrite
 
-**Breaking:**
+**Impact:**
 - `ThrottleRequests` now requires `RateLimiter` instead of `CacheDriver` (container handles this automatically)
 - Config keys `max_attempts`/`decay_minutes` removed - use `limiters` array instead
 
-**New config structure:**
+**New config:**
 ```php
 'rate_limit' => [
     'enabled' => true,
@@ -148,3 +223,6 @@ Use `content:migrate db` instead:
     'whitelist' => ['127.0.0.1', '::1'],
 ],
 ```
+
+**Action required:**
+- Replace the old flat rate-limit settings with the new `limiters` array structure.

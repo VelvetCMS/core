@@ -19,11 +19,13 @@ It is built for developers and teams that want full-stack capabilities without f
 
 That philosophy is what we call **Pragmatic Zero Magic**. You should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
 
-- **Explicit over Implicit**: Core services are wired manually. It's faster, clearer, and easier to debug.
-- **Pragmatic Convenience**: Autowiring is available for your controllers and commands, but it's a tool, not a crutch.
-- **No Facades**: No static proxies hiding dependencies. Standard injection and clear helpers.
-- **Content First**: Drivers, caching, and routing are optimized for publishing, not generic "web apps".
-- **Lean by Design**: <15k LoC (excluding tests), 4 runtime dependencies. Full feature set without the bloat.
+Core also deliberately tracks modern PHP aggressively. We target current stable releases early, remove legacy detours when they start warping the design, and prefer clear upgrade paths over dragging old compatibility baggage forward.
+
+- **Explicit over Implicit**: Service bindings live in bootstrap code, routes and middleware are declared directly, and the request lifecycle stays readable end to end.
+- **Pragmatic Convenience**: Autowiring helps with controllers and commands, but command registration, module loading, and core service wiring remain explicit where hidden resolution would cost clarity.
+- **No Facades**: Dependencies arrive through constructors and method signatures, so tests and refactors work against real contracts instead of global static state.
+- **Content First**: Page content is file-native, the parser understands frontmatter and block modes, and routing plus caching are tuned for publishing workloads rather than generic CRUD scaffolding.
+- **Lean by Design**: The runtime stays small, the dependency graph stays short, and the codebase remains compact enough to inspect without framework archaeology.
 
 ---
 
@@ -36,13 +38,7 @@ That philosophy is what we call **Pragmatic Zero Magic**. You should be able to 
 - **CLI Suite**: Extensive command-line tools for migrations, cache management, scaffolding, serving, diagnostics and more.
 
 ### Content & Data
-- **Flexible Content Drivers**: Choose the storage strategy that fits your scale.
-  | Driver | Use Case | Storage |
-  |--------|----------|---------|
-  | **File** | Small sites, simple setup | Markdown files |
-  | **DB** | Large sites, complex queries | Database only |
-  | **Hybrid** | Best of both | Markdown + DB metadata |
-  | **Auto** | Adaptive selection | Picks driver at boot based on page count |
+- **File-Based Content**: Pages live as `.vlt` or `.md` files. They stay versionable, portable, and inspectable, with an on-disk index for fast lookups and no database requirement for page content.
 - **Fluent Query Builder**: Expressive database abstraction layer supporting complex queries, joins, raw expressions, and automatic caching.
 - **Schema Builder & Migrations**:
   - **Database Agnostic**: Write schemas once, run on SQLite, MySQL, or PostgreSQL.
@@ -52,7 +48,7 @@ That philosophy is what we call **Pragmatic Zero Magic**. You should be able to 
   - **Drivers**: Support for `CommonMark` (recommended), `Parsedown`, or simple `HTML` pass-through.
   - **Extensible**: Custom template tags (`{{ }}`, `{!! !!}`) preserved in all drivers.
   - **CommonMark Features**: Tables, Strikethrough, Autolink, Task Lists (via extensions).
-- **Velvet Content Blocks**: `.vlt` files with YAML frontmatter and block switches (`@markdown`, `@html`, `@text`).
+- **Velvet Content Blocks**: `.vlt` files with YAML frontmatter and block switches (`@markdown`, `@html`, `@text`, `@component`).
 - **Data Store**: Simple key-value collections with `File`, `Database`, or `Auto` drivers for module data.
 - **Smart Caching**: Multi-driver support (`Apcu`, `File`, `Redis`) for caching queries, pages, routes, configuration, templates, and markdown compilation.
 - **File Storage**:

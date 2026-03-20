@@ -1,6 +1,6 @@
 {
   "name": "velvetcms/core",
-  "description": "Modular PHP Content Application Framework with pluggable content drivers, events, templates and much more. Foundation for the VelvetCMS platform.",
+  "description": "Modular PHP content application framework with file-native page content, events, templates, and more. Foundation for the VelvetCMS platform.",
   "type": "library",
   "license": "Apache-2.0",
   "require": {
