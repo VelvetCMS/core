@@ -340,6 +340,9 @@ class Router
             $path = str_replace('{' . $key . '?}', $stringValue, $path);
         }
 
+        // Strip unfilled optional parameters
+        $path = preg_replace('#/\{[^}]+\?\}#', '', $path) ?? $path;
+
         return $path;
     }
 

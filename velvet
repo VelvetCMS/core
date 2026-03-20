@@ -38,11 +38,13 @@ for ($i = 1; $i < count($argv); $i++) {
 
     if (str_starts_with($arg, '--tenant=')) {
         $tenantOverride = substr($arg, strlen('--tenant='));
+        array_splice($argv, $i, 1);
         break;
     }
 
     if ($arg === '--tenant') {
         $tenantOverride = $argv[$i + 1] ?? null;
+        array_splice($argv, $i, $tenantOverride !== null ? 2 : 1);
         break;
     }
 }
@@ -135,7 +137,7 @@ if ($app) {
         $registry->register('page:list', PageListCommand::class);
         $registry->register('page:publish', PagePublishCommand::class);
         $registry->register('page:delete', PageDeleteCommand::class);
-        $registry->register('content:migrate', \VelvetCMS\Commands\Content\MigrateContentCommand::class);
+        $registry->register('index:rebuild', \VelvetCMS\Commands\Page\IndexRebuildCommand::class);
         $registry->register('migrate', MigrateCommand::class);
         $registry->register('migrate:tenants', MigrateTenantsCommand::class);
         $registry->register('optimize', OptimizeCommand::class);

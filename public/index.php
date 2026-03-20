@@ -39,11 +39,12 @@ try {
     $response = $router->dispatch($request);
 } catch (\Throwable $e) {
     $handler->report($e, $request);
-    $response = $handler->render($e, $request);
 
     if (config('app.debug', false)) {
         throw $e;
     }
+
+    $response = $handler->render($e, $request);
 }
 
 $response->send();

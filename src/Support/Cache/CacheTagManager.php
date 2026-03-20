@@ -76,7 +76,7 @@ final class CacheTagManager
 
             if (!in_array($key, $existing, true)) {
                 $existing[] = $key;
-                $this->cache->set($indexKey, $existing, $ttl > 0 ? $ttl : 31536000);
+                $this->cache->set($indexKey, $existing, 31536000);
             }
         }
     }
