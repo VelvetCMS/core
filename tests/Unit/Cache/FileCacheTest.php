@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Cache;
 
-use VelvetCMS\Drivers\Cache\FileCache;
 use VelvetCMS\Models\Page;
 use VelvetCMS\Tests\Support\TestCase;
 

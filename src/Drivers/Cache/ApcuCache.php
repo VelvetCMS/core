@@ -43,7 +43,14 @@ class ApcuCache implements CacheDriver
 
     public function clear(): bool
     {
-        return apcu_clear_cache();
+        $prefix = $this->getPrefix();
+        $iterator = new \APCUIterator('/^' . preg_quote($prefix, '/') . '/');
+
+        foreach ($iterator as $item) {
+            apcu_delete($item['key']);
+        }
+
+        return true;
     }
 
     public function remember(string $key, int $ttl, callable $callback): mixed

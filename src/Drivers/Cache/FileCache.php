@@ -36,12 +36,7 @@ class FileCache implements CacheDriver
 
         $data = @unserialize($content, ['allowed_classes' => true]);
 
-        if (!is_array($data) || !array_key_exists('value', $data) || !array_key_exists('mac', $data)) {
-            $this->delete($key);
-            return $default;
-        }
-
-        if (!$this->verifyMac($data)) {
+        if (!is_array($data) || !array_key_exists('value', $data)) {
             $this->delete($key);
             return $default;
         }
@@ -70,8 +65,6 @@ class FileCache implements CacheDriver
             'value' => $value,
             'expires' => $expires,
         ];
-
-        $data['mac'] = $this->signMac($data);
 
         return file_put_contents($file, serialize($data), LOCK_EX) !== false;
     }
@@ -151,32 +144,5 @@ class FileCache implements CacheDriver
                 unlink($path);
             }
         }
-    }
-
-    private function signMac(array $data): string
-    {
-        $payload = serialize([
-            'value' => $data['value'] ?? null,
-            'expires' => $data['expires'] ?? null,
-        ]);
-
-        return hash_hmac('sha256', $payload, $this->macKey());
-    }
-
-    private function verifyMac(array $data): bool
-    {
-        $expected = $this->signMac($data);
-        $mac = (string) ($data['mac'] ?? '');
-
-        return hash_equals($expected, $mac);
-    }
-
-    private function macKey(): string
-    {
-        if (function_exists('config')) {
-            return (string) config('app.key', '');
-        }
-
-        return '';
     }
 }
