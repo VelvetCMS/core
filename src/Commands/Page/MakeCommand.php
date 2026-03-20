@@ -22,12 +22,12 @@ class MakeCommand extends Command
 
     public function signature(): string
     {
-        return 'page:make [slug] [--title=] [--interactive]';
+        return 'page:make [slug] [--title=] [--layout=] [--trusted] [--interactive]';
     }
 
     public function description(): string
     {
-        return 'Create a new page';
+        return 'Create a new .vlt page';
     }
 
     public function handle(): int
@@ -40,7 +40,7 @@ class MakeCommand extends Command
 
         if (!$slug) {
             $this->error('Page slug is required');
-            $this->line('Usage: velvet page:make <slug> [--title="Page Title"]');
+            $this->line('Usage: velvet page:make <slug> [--title="Page Title"] [--layout=default] [--trusted]');
             return 1;
         }
 
@@ -50,18 +50,22 @@ class MakeCommand extends Command
         }
 
         $title = $this->option('title', ucwords(str_replace(['-', '_'], ' ', $slug)));
+        $layout = $this->option('layout', 'default');
+        $trusted = (bool) $this->option('trusted');
 
         $page = new Page(
             slug: $slug,
             title: $title,
-            content: "# {$title}\n\nYour content here...",
-            status: 'draft'
+            content: $this->skeleton($title),
+            status: 'draft',
+            layout: $layout,
+            trusted: $trusted
         );
 
         $this->pageService->save($page);
 
         $this->success("Page '{$slug}' created successfully!");
-        $this->line("Edit: content/pages/{$slug}.md");
+        $this->line("  Edit: content/pages/{$slug}.vlt");
 
         return 0;
     }
@@ -85,15 +89,17 @@ class MakeCommand extends Command
         }
 
         $title = $this->ask('Page title', ucwords(str_replace(['-', '_'], ' ', $slug)));
-        $status = $this->choice('Status', ['draft', 'published'], '0');
         $layout = $this->ask('Layout', 'default');
+        $status = $this->choice('Status', ['draft', 'published'], '0');
+        $trusted = $this->confirm('Enable trusted mode? (allows @php and {!! !!})', false);
 
         $page = new Page(
             slug: $slug,
             title: $title,
-            content: "# {$title}\n\nYour content here...",
+            content: $this->skeleton($title),
             status: $status,
-            layout: $layout
+            layout: $layout,
+            trusted: $trusted
         );
 
         $this->line();
@@ -103,10 +109,33 @@ class MakeCommand extends Command
 
         $this->success("Page '{$slug}' created successfully!");
         $this->line();
-        $this->line("  URL: /{$slug}");
-        $this->line("  File: content/pages/{$slug}.md");
+        $this->line("  URL:    /{$slug}");
+        $this->line("  File:   content/pages/{$slug}.vlt");
+        $this->line("  Layout: {$layout}");
+        if ($trusted) {
+            $this->line('  Trusted: yes');
+        }
         $this->line();
 
         return 0;
+    }
+
+    private function skeleton(string $title): string
+    {
+        return <<<VLT
+@html
+<section class="hero">
+  <div class="container">
+    <h1>{$title}</h1>
+  </div>
+</section>
+
+@html
+<section class="content">
+  <div class="container">
+    <p>Your content here...</p>
+  </div>
+</section>
+VLT;
     }
 }

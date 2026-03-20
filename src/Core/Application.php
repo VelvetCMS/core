@@ -250,9 +250,13 @@ class Application
             try {
                 $page = $pages->load('welcome');
                 $layout = 'layouts/' . ($page->layout ?? 'default');
+                $contentVars = ['page' => $page];
+                $content = $page->trusted
+                    ? $view->compileString($page->html(), $contentVars)
+                    : $view->safe($page->html(), $contentVars);
                 return \VelvetCMS\Http\Response::html($view->render($layout, [
                     'page' => $page,
-                    'content' => $page->html(),
+                    'content' => $content,
                 ]));
             } catch (\Exception $e) {
                 return \VelvetCMS\Http\Response::html('<h1>Welcome to VelvetCMS</h1><p>Create a welcome.md page to get started.</p>');
@@ -268,9 +272,13 @@ class Application
                 }
 
                 $layout = 'layouts/' . ($page->layout ?? 'default');
+                $contentVars = ['page' => $page];
+                $content = $page->trusted
+                    ? $view->compileString($page->html(), $contentVars)
+                    : $view->safe($page->html(), $contentVars);
                 return \VelvetCMS\Http\Response::html($view->render($layout, [
                     'page' => $page,
-                    'content' => $page->html(),
+                    'content' => $content,
                 ]));
             } catch (\VelvetCMS\Exceptions\NotFoundException $e) {
                 return \VelvetCMS\Http\Response::notFound('Page not found');
