@@ -6,6 +6,8 @@ namespace VelvetCMS\Http\Controllers;
 
 use VelvetCMS\Core\Application;
 use VelvetCMS\Http\RateLimiting\RateLimiter;
+use VelvetCMS\Http\Request;
+use VelvetCMS\Http\Response;
 use VelvetCMS\Scheduling\Schedule;
 
 class WebCronController
@@ -16,22 +18,19 @@ class WebCronController
     ) {
     }
 
-    public function run(): void
+    public function handle(Request $request): Response
     {
         if (!$this->isIpAllowed()) {
-            http_response_code(403);
-            echo 'Forbidden: IP not allowed.';
-            return;
+            return Response::html('Forbidden: IP not allowed.', 403);
         }
 
-        if (!$this->isAuthorized()) {
-            http_response_code(403);
-            echo 'Forbidden: Invalid or missing cron token.';
-            return;
+        if (!$this->isAuthorized($request)) {
+            return Response::html('Forbidden: Invalid or missing cron token.', 403);
         }
 
-        if (!$this->passesRateLimit()) {
-            return;
+        $rateLimitResponse = $this->checkRateLimit();
+        if ($rateLimitResponse !== null) {
+            return $rateLimitResponse;
         }
 
         $tasks = $this->schedule->getDueTasks();
@@ -51,17 +50,17 @@ class WebCronController
             }
         }
 
-        echo "Ran {$count} scheduled tasks.";
+        return Response::html("Ran {$count} scheduled tasks.");
     }
 
-    private function isAuthorized(): bool
+    private function isAuthorized(Request $request): bool
     {
         $configuredToken = (string) config('app.cron_token', '');
         if ($configuredToken === '') {
             return false;
         }
 
-        $token = (string) ($_GET['token'] ?? '');
+        $token = (string) $request->query('token', '');
         if ($token !== '' && hash_equals($configuredToken, $token)) {
             return true;
         }
@@ -70,8 +69,8 @@ class WebCronController
             return false;
         }
 
-        $expires = (int) ($_GET['expires'] ?? 0);
-        $signature = (string) ($_GET['signature'] ?? '');
+        $expires = (int) $request->query('expires', 0);
+        $signature = (string) $request->query('signature', '');
 
         if ($expires <= 0 || $signature === '' || $expires < time()) {
             return false;
@@ -118,10 +117,10 @@ class WebCronController
         return false;
     }
 
-    private function passesRateLimit(): bool
+    private function checkRateLimit(): ?Response
     {
         if (!(bool) config('app.cron_rate_limit.enabled', false)) {
-            return true;
+            return null;
         }
 
         $attempts = max(1, (int) config('app.cron_rate_limit.attempts', 60));
@@ -131,20 +130,17 @@ class WebCronController
         try {
             $limiter = $this->app->make(RateLimiter::class);
             if (!$limiter instanceof RateLimiter) {
-                return true;
+                return null;
             }
 
             $result = $limiter->attempt('webcron:' . $remoteIp, $attempts, $decay);
             if ($result['allowed']) {
-                return true;
+                return null;
             }
 
-            http_response_code(429);
-            echo 'Too Many Requests';
-
-            return false;
+            return Response::html('Too Many Requests', 429);
         } catch (\Throwable) {
-            return true;
+            return null;
         }
     }
 

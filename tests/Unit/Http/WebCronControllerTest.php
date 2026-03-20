@@ -6,6 +6,7 @@ namespace VelvetCMS\Tests\Unit\Http;
 
 use VelvetCMS\Core\Application;
 use VelvetCMS\Http\Controllers\WebCronController;
+use VelvetCMS\Http\Request;
 use VelvetCMS\Scheduling\Schedule;
 use VelvetCMS\Tests\Support\TestCase;
 
@@ -19,14 +20,12 @@ final class WebCronControllerTest extends TestCase
             'app.cron_rate_limit.enabled' => false,
         ]);
         $_GET = [];
-        http_response_code(200);
 
         $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
+        $response = $controller->handle(Request::capture());
 
-        [, $output] = $this->captureOutput(fn () => $controller->run());
-
-        $this->assertSame(403, http_response_code());
-        $this->assertStringContainsString('Forbidden', $output);
+        $this->assertSame(403, $response->getStatus());
+        $this->assertStringContainsString('Forbidden', $response->getContent());
     }
 
     public function test_runs_due_tasks_and_outputs_count(): void
@@ -49,11 +48,10 @@ final class WebCronControllerTest extends TestCase
         });
 
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
-
-        [, $output] = $this->captureOutput(fn () => $controller->run());
+        $response = $controller->handle(Request::capture());
 
         $this->assertSame(2, $ran);
-        $this->assertStringContainsString('Ran 2 scheduled tasks.', $output);
+        $this->assertStringContainsString('Ran 2 scheduled tasks.', $response->getContent());
     }
 
     public function test_denies_ip_not_on_allowlist(): void
@@ -65,14 +63,12 @@ final class WebCronControllerTest extends TestCase
 
         $_GET = ['token' => 'secret'];
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
-        http_response_code(200);
 
         $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
+        $response = $controller->handle(Request::capture());
 
-        [, $output] = $this->captureOutput(fn () => $controller->run());
-
-        $this->assertSame(403, http_response_code());
-        $this->assertStringContainsString('IP not allowed', $output);
+        $this->assertSame(403, $response->getStatus());
+        $this->assertStringContainsString('IP not allowed', $response->getContent());
     }
 
     public function test_accepts_valid_signed_url_when_enabled(): void
@@ -101,11 +97,10 @@ final class WebCronControllerTest extends TestCase
         });
 
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
-
-        [, $output] = $this->captureOutput(fn () => $controller->run());
+        $response = $controller->handle(Request::capture());
 
         $this->assertSame(1, $ran);
-        $this->assertStringContainsString('Ran 1 scheduled tasks.', $output);
+        $this->assertStringContainsString('Ran 1 scheduled tasks.', $response->getContent());
     }
 
     public function test_rate_limit_blocks_when_exceeded(): void
@@ -124,13 +119,12 @@ final class WebCronControllerTest extends TestCase
         $controller = new WebCronController(new Application($this->tmpDir), $schedule);
 
         $_GET = ['token' => 'secret'];
-        $this->captureOutput(fn () => $controller->run());
+        $controller->handle(Request::capture());
 
         $_GET = ['token' => 'secret'];
-        http_response_code(200);
-        [, $output] = $this->captureOutput(fn () => $controller->run());
+        $response = $controller->handle(Request::capture());
 
-        $this->assertSame(429, http_response_code());
-        $this->assertStringContainsString('Too Many Requests', $output);
+        $this->assertSame(429, $response->getStatus());
+        $this->assertStringContainsString('Too Many Requests', $response->getContent());
     }
 }

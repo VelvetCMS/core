@@ -192,12 +192,13 @@ class CoreServiceProvider extends ServiceProvider
 
         if (config('app.cron_enabled', false)) {
             $router = $this->app->make('router');
-            $router->get('/system/cron', function () {
+            $router->get('/system/cron', function ($request) {
                 $controller = new \VelvetCMS\Http\Controllers\WebCronController(
                     $this->app,
                     $this->app->make(\VelvetCMS\Scheduling\Schedule::class)
                 );
-                $controller->run();
+
+                return $controller->handle($request);
             });
         }
     }
