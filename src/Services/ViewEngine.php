@@ -108,7 +108,7 @@ class ViewEngine
         $this->assertStringEvaluationAllowed();
 
         $template = preg_replace('/@php\s*.*?@endphp/s', '', $template);
-        $template = preg_replace('/\{!!\s*(.+?)\s*!!\}/', '{{ $1 }}', $template);
+        $template = preg_replace('/(?<!@)\{!!(.+?)!!\}/', '{{ $1 }}', $template);
 
         $content = $this->compileEchos($template);
         $content = $this->compileSafeDirectives($content);
@@ -178,8 +178,8 @@ class ViewEngine
     private function compileEchos(string $content): string
     {
         $content = preg_replace('/\{\{--.*?--\}\}/s', '', $content);
-        $content = preg_replace('/(?<!@)\{!!\s*(.+?)\s*!!\}/', '<?php echo $1; ?>', $content);
-        $content = preg_replace('/(?<!@)\{\{\s*(.+?)\s*\}\}/', '<?php echo e($1); ?>', $content);
+        $content = preg_replace('/(?<!@)\{!!(.+?)!!\}/', '<?php echo $1; ?>', $content);
+        $content = preg_replace('/(?<!@)\{\{(.+?)\}\}/', '<?php echo e($1); ?>', $content);
         $content = str_replace(['@{{', '@{!!'], ['{{', '{!!'], $content);
         return $content;
     }
@@ -209,18 +209,18 @@ class ViewEngine
         );
 
         // Control structures
-        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php if (' . $m[1] . '): ?>', $content);
-        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php elseif (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php if (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php elseif (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@else/', '<?php else: ?>', $content);
         $content = preg_replace('/@endif/', '<?php endif; ?>', $content);
 
-        $content = preg_replace_callback('/@foreach\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php foreach (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@foreach\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php foreach (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@endforeach/', '<?php endforeach; ?>', $content);
 
-        $content = preg_replace_callback('/@for\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php for (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@for\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php for (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@endfor/', '<?php endfor; ?>', $content);
 
-        $content = preg_replace_callback('/@while\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php while (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@while\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php while (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@endwhile/', '<?php endwhile; ?>', $content);
 
         // @include
@@ -253,7 +253,7 @@ class ViewEngine
 
         // @isset / @endisset
         $content = preg_replace_callback(
-            '/@isset\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            '/@isset\s*\(((?:[^()]|\((?1)\))*)\)/',
             fn ($m) => '<?php if (isset(' . $m[1] . ')): ?>',
             $content
         );
@@ -261,7 +261,7 @@ class ViewEngine
 
         // @empty / @endempty
         $content = preg_replace_callback(
-            '/@empty\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            '/@empty\s*\(((?:[^()]|\((?1)\))*)\)/',
             fn ($m) => '<?php if (empty(' . $m[1] . ')): ?>',
             $content
         );
@@ -269,7 +269,7 @@ class ViewEngine
 
         // @unless / @endunless
         $content = preg_replace_callback(
-            '/@unless\s*\(((?:[^()]|\([^()]*\))*)\)/',
+            '/@unless\s*\(((?:[^()]|\((?1)\))*)\)/',
             fn ($m) => '<?php if (!(' . $m[1] . ')): ?>',
             $content
         );
@@ -278,7 +278,7 @@ class ViewEngine
         // Custom directives
         foreach ($this->directives as $name => $compiler) {
             $content = preg_replace_callback(
-                '/@' . preg_quote($name, '/') . '\s*\(((?:[^()]|\([^()]*\))*)\)/',
+                '/@' . preg_quote($name, '/') . '\s*\(((?:[^()]|\((?1)\))*)\)/',
                 fn ($m) => $compiler($m[1]),
                 $content
             );
@@ -289,11 +289,11 @@ class ViewEngine
 
     private function compileSafeDirectives(string $content): string
     {
-        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php if (' . $m[1] . '): ?>', $content);
-        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php elseif (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@if\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php if (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@elseif\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php elseif (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@else/', '<?php else: ?>', $content);
         $content = preg_replace('/@endif/', '<?php endif; ?>', $content);
-        $content = preg_replace_callback('/@foreach\s*\(((?:[^()]|\([^()]*\))*)\)/', fn ($m) => '<?php foreach (' . $m[1] . '): ?>', $content);
+        $content = preg_replace_callback('/@foreach\s*\(((?:[^()]|\((?1)\))*)\)/', fn ($m) => '<?php foreach (' . $m[1] . '): ?>', $content);
         $content = preg_replace('/@endforeach/', '<?php endforeach; ?>', $content);
         return $content;
     }
@@ -386,7 +386,7 @@ class ViewEngine
 
     public function clearCache(): void
     {
-        foreach (glob($this->cachePath . '/*.php') as $file) {
+        foreach (glob($this->cachePath . '/*.php') ?: [] as $file) {
             unlink($file);
         }
     }
