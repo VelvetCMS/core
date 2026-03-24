@@ -4,10 +4,19 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Commands;
 
+use VelvetCMS\Core\Application;
+
 class CommandRegistry
 {
     /** @var array<string, array{class: class-string<Command>, category?: string|null, hidden?: bool}> */
     private array $commands = [];
+
+    private ?Application $app = null;
+
+    public function setApp(Application $app): void
+    {
+        $this->app = $app;
+    }
 
     public function register(string $name, string $commandClass, array $options = []): void
     {
@@ -83,25 +92,7 @@ class CommandRegistry
         }
 
         $commandClass = $commandMeta['class'];
-
-        if (in_array($commandClass, [
-            \VelvetCMS\Commands\ListCommand::class,
-            \VelvetCMS\Commands\HelpCommand::class,
-        ], true)) {
-            $command = new $commandClass($this);
-        } else {
-            global $app;
-
-            if (isset($app) && method_exists($app, 'make')) {
-                try {
-                    $command = $app->make($commandClass);
-                } catch (\Throwable $e) {
-                    $command = $this->makeCommand($commandClass, $app);
-                }
-            } else {
-                $command = new $commandClass();
-            }
-        }
+        $command = $this->resolveCommand($commandClass);
 
         $command->setArguments($arguments);
         $command->setOptions($options);
@@ -119,7 +110,20 @@ class CommandRegistry
         }
     }
 
-    private function makeCommand(string $commandClass, $app): object
+    private function resolveCommand(string $commandClass): Command
+    {
+        if ($this->app !== null) {
+            try {
+                return $this->app->make($commandClass);
+            } catch (\Throwable) {
+                return $this->makeCommand($commandClass);
+            }
+        }
+
+        return $this->makeCommand($commandClass);
+    }
+
+    private function makeCommand(string $commandClass): Command
     {
         $reflection = new \ReflectionClass($commandClass);
         $constructor = $reflection->getConstructor();
@@ -134,14 +138,17 @@ class CommandRegistry
 
             if ($type instanceof \ReflectionNamedType && !$type->isBuiltin()) {
                 $typeName = $type->getName();
-                try {
-                    $dependencies[] = $app->make($typeName);
-                } catch (\Throwable $e) {
-                    if ($param->isDefaultValueAvailable()) {
-                        $dependencies[] = $param->getDefaultValue();
-                    } else {
-                        throw $e;
+
+                if ($typeName === self::class) {
+                    $dependencies[] = $this;
+                } elseif ($this->app !== null) {
+                    try {
+                        $dependencies[] = $this->app->make($typeName);
+                    } catch (\Throwable) {
+                        $dependencies[] = $param->isDefaultValueAvailable() ? $param->getDefaultValue() : null;
                     }
+                } elseif ($param->isDefaultValueAvailable()) {
+                    $dependencies[] = $param->getDefaultValue();
                 }
             } elseif ($param->isDefaultValueAvailable()) {
                 $dependencies[] = $param->getDefaultValue();

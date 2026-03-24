@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands;
 
 use Throwable;
+use VelvetCMS\Core\ModuleManager;
 use VelvetCMS\Database\Migrations\Migrator;
 
 class MigrateCommand extends Command
@@ -15,7 +16,8 @@ class MigrateCommand extends Command
     }
 
     public function __construct(
-        private readonly Migrator $migrator
+        private readonly Migrator $migrator,
+        private readonly ?ModuleManager $moduleManager = null,
     ) {
     }
 
@@ -110,16 +112,13 @@ class MigrateCommand extends Command
      */
     private function getModuleMigrationPaths(): array
     {
-        global $app;
-
-        if (!isset($app) || !$app->has(\VelvetCMS\Core\ModuleManager::class)) {
+        if ($this->moduleManager === null) {
             return [];
         }
 
-        $moduleManager = $app->make(\VelvetCMS\Core\ModuleManager::class);
         $paths = [];
 
-        foreach ($moduleManager->all() as $module) {
+        foreach ($this->moduleManager->all() as $module) {
             if (method_exists($module, 'getMigrationPaths')) {
                 $paths = array_merge($paths, $module->getMigrationPaths());
                 continue;

@@ -24,13 +24,13 @@ class EventDispatcher
         }
 
         foreach ($this->listeners[$event] as $listener) {
-            call_user_func($listener, $payload);
+            $listener($payload);
         }
     }
 
     public function hasListeners(string $event): bool
     {
-        return isset($this->listeners[$event]) && count($this->listeners[$event]) > 0;
+        return isset($this->listeners[$event]) && $this->listeners[$event] !== [];
     }
 
     public function forget(string $event): void

@@ -42,16 +42,7 @@ class Request
 
     public function path(): string
     {
-        $path = $this->server['REQUEST_URI'] ?? '/';
-
-        // Remove query string
-        if (($pos = strpos($path, '?')) !== false) {
-            $path = substr($path, 0, $pos);
-        }
-
-        if ($path === '') {
-            $path = '/';
-        }
+        $path = strtok($this->server['REQUEST_URI'] ?? '/', '?') ?: '/';
 
         if ($this->pathPrefix !== null && $this->pathPrefix !== '/') {
             $prefix = rtrim($this->pathPrefix, '/');
@@ -76,15 +67,7 @@ class Request
 
     public function rawPath(): string
     {
-        $path = $this->server['REQUEST_URI'] ?? '/';
-
-        if (($pos = strpos($path, '?')) !== false) {
-            $path = substr($path, 0, $pos);
-        }
-
-        if ($path === '') {
-            $path = '/';
-        }
+        $path = strtok($this->server['REQUEST_URI'] ?? '/', '?') ?: '/';
 
         if ($path !== '/' && str_ends_with($path, '/')) {
             $path = rtrim($path, '/');

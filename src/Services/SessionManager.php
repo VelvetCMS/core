@@ -15,7 +15,7 @@ class SessionManager
 
     public function get(string $key, mixed $default = null): mixed
     {
-        if (strpos($key, '.') !== false) {
+        if (str_contains($key, '.')) {
             $segments = explode('.', $key);
             $value = $_SESSION;
 
@@ -34,7 +34,7 @@ class SessionManager
 
     public function set(string $key, mixed $value): void
     {
-        if (strpos($key, '.') !== false) {
+        if (str_contains($key, '.')) {
             $segments = explode('.', $key);
             $current = &$_SESSION;
 
@@ -61,7 +61,7 @@ class SessionManager
 
     public function delete(string $key): void
     {
-        if (strpos($key, '.') !== false) {
+        if (str_contains($key, '.')) {
             $segments = explode('.', $key);
             $current = &$_SESSION;
 
