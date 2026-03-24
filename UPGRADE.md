@@ -2,30 +2,104 @@
 
 This document covers **breaking changes** and required actions when upgrading between versions. For new features and improvements, see the [release notes](https://github.com/VelvetCMS/core/releases).
 
+## 2.1.0
+
+Version 2.1 is a **modules, correctness, and polishing** update. The module system becomes convention-driven, global state is eliminated, and legacy PHP patterns are modernized.
+
+### Breaking changes
+
+#### Configuration namespace separator changed from dot to colon
+
+Config keys for module-scoped configuration now use a colon (`:`) as the namespace separator instead of a dot (`.`).
+
+**Impact:**
+- All module-scoped config access must change from dot-only to colon-namespaced syntax.
+
+**Action required:**
+- Update all config calls: `config('velvetcms.editor.enabled')` → `config('velvetcms:editor.enabled')`.
+- The format is `namespace:file.key` — colon separates the module namespace from the file-level dotted path.
+
+#### `BaseModule::mergeConfigFrom()` removed
+
+Module config registration is now handled automatically by `ModuleManager`. The manual `mergeConfigFrom()` escape hatch has been removed.
+
+**Impact:**
+- Modules that called `$this->mergeConfigFrom()` in `register()` will error.
+
+**Action required:**
+- Remove all `mergeConfigFrom()` calls from module `register()` methods.
+- Place config files in `config/` within your module root. `ModuleManager` auto-registers them under the module's namespace.
+
+#### Exception interfaces removed
+
+Three interfaces have been deleted:
+- `VelvetCMS\Exceptions\ExceptionHandlerInterface`
+- `VelvetCMS\Exceptions\RenderableExceptionInterface`
+- `VelvetCMS\Exceptions\ReportableExceptionInterface`
+
+**Impact:**
+- Code referencing these interfaces will error.
+- `Handler` no longer implements `ExceptionHandlerInterface`.
+- `HttpException` no longer implements `RenderableExceptionInterface`.
+- Custom exception renderers registered via `Handler::addRenderer()` now correctly take priority over `HttpException::toResponse()` (previously the interface check short-circuited before custom renderers could fire).
+
+**Action required:**
+- Replace `ExceptionHandlerInterface` type-hints with `VelvetCMS\Exceptions\Handler`.
+- Remove any `implements RenderableExceptionInterface` or `implements ReportableExceptionInterface` from custom exceptions.
+- If you had a custom `ReportableExceptionInterface` implementation, register equivalent behavior via `Handler::addReporter()` instead.
+
+#### `module:migrate-artifacts` renamed to `module:provision`
+
+**Impact:**
+- Scripts or CI pipelines referencing `velvet module:migrate-artifacts` will fail.
+
+**Action required:**
+- Replace `module:migrate-artifacts` with `module:provision` in all scripts and documentation.
+
+### Migration notes
+
+#### Module commands are now declarative
+
+Commands can be declared in `module.json` under the `commands` key instead of registering them imperatively:
+
+```json
+{
+    "commands": {
+        "command:name": "Namespace\\CommandClass"
+    }
+}
+```
+
+**Impact:**
+- No breaking change. Imperative registration via the `commands.registering` event still works.
+
+**Action required:**
+- No action required. Consider migrating to declarative commands for reduced boilerplate.
+
+#### Convention-based auto-loading
+
+`ModuleManager` now auto-registers:
+- **Config:** files in `config/` → namespaced under module name
+- **Views:** files in `resources/views/` → namespaced as `modulename::path`
+- **Routes:** `routes/web.php` and `routes/api.php` → auto-loaded at boot
+
+Modules can opt out of route auto-loading via `module.json`:
+```json
+{
+    "extra": {
+        "autoload": {
+            "routes": false
+        }
+    }
+}
+```
+
+**Action required:**
+- No action required. Existing manual `loadViewsFrom()` / `loadRoutesFrom()` calls still work but are now redundant if your module follows the directory conventions.
+
 ## 2.0.0
 
 Version 2.0 marks the initial maturity milestone for VelvetCMS Core. Every subsystem — routing, DI, views, content, caching, scheduling, CLI, database, tenancy — is now considered stable. Starting with this release, Core follows **strict Semantic Versioning**.
-
-### What's new
-
-#### Page Index system
-
-File-native page content now uses an indexing layer for fast lookups, filtering, and pagination without re-parsing file headers on every request.
-
-- **Interface:** `VelvetCMS\Content\Index\PageIndex`
-- **Backends:** `JsonPageIndex` (lightweight, default) and `SqlitePageIndex` (scalable, queryable)
-- **Query API:** `PageIndexQuery` — filter by status, paginate, sort by date/title/slug
-- **Sync:** mtime-based change detection; only re-index modified files
-- **CLI:** `page:index:rebuild` command for full reindex
-
-**Config (`config/content.php`):**
-```php
-'index' => [
-    'driver' => env('CONTENT_PAGE_INDEX_DRIVER', 'json'),
-    'json'   => ['path' => storage_path('index/page-index.json')],
-    'sqlite' => ['path' => storage_path('index/page-index.sqlite')],
-],
-```
 
 ### Breaking changes
 
