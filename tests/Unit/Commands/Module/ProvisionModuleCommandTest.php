@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Commands\Module;
 
-use VelvetCMS\Commands\Module\MigrateModuleArtifactsCommand;
+use VelvetCMS\Commands\Module\ProvisionModuleCommand;
 use VelvetCMS\Core\Tenancy\TenancyManager;
 use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
-final class MigrateModuleArtifactsCommandTest extends TestCase
+final class ProvisionModuleCommandTest extends TestCase
 {
     use TenancyTestHelpers;
     protected function tearDown(): void
@@ -44,7 +44,7 @@ final class MigrateModuleArtifactsCommandTest extends TestCase
         }
 
         try {
-            $command = new MigrateModuleArtifactsCommand();
+            $command = new ProvisionModuleCommand();
             $command->setOptions(['tenant' => 'demo']);
 
             [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());
@@ -74,7 +74,7 @@ final class MigrateModuleArtifactsCommandTest extends TestCase
         ]);
         TenancyManager::setCurrent(new TenantContext('dry-test'));
 
-        $command = new MigrateModuleArtifactsCommand();
+        $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'dry-test', 'dry-run' => true]);
 
         [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());
@@ -107,7 +107,7 @@ final class MigrateModuleArtifactsCommandTest extends TestCase
         ]);
         TenancyManager::setCurrent(new TenantContext('merge-test'));
 
-        $command = new MigrateModuleArtifactsCommand();
+        $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'merge-test']);
 
         [$exitCode] = $this->captureOutput(fn () => $command->handle());
@@ -137,7 +137,7 @@ final class MigrateModuleArtifactsCommandTest extends TestCase
         ]);
         TenancyManager::setCurrent(new TenantContext('copy-test'));
 
-        $command = new MigrateModuleArtifactsCommand();
+        $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'copy-test']);
 
         [$exitCode] = $this->captureOutput(fn () => $command->handle());
@@ -171,7 +171,7 @@ final class MigrateModuleArtifactsCommandTest extends TestCase
         ]);
         TenancyManager::setCurrent(new TenantContext('skip-test'));
 
-        $command = new MigrateModuleArtifactsCommand();
+        $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'skip-test']);
 
         [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());

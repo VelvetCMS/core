@@ -98,11 +98,13 @@ use VelvetCMS\Commands\Page\PublishCommand as PagePublishCommand;
 use VelvetCMS\Commands\Page\DeleteCommand as PageDeleteCommand;
 use VelvetCMS\Commands\OptimizeCommand;
 use VelvetCMS\Commands\MigrateTenantsCommand;
-use VelvetCMS\Commands\Module\MigrateModuleArtifactsCommand;
+use VelvetCMS\Commands\Module\ProvisionModuleCommand;
 
 $registry = new CommandRegistry();
 
 if ($app) {
+    $registry->setApp($app);
+
     try {
         $app->instance(CommandRegistry::class, $registry);
         $app->alias('commands', CommandRegistry::class);
@@ -150,8 +152,9 @@ if ($app) {
         $registry->register('make:module', \VelvetCMS\Commands\Make\MakeModuleCommand::class);
 
         $registry->register('module:list', \VelvetCMS\Commands\Module\ListModuleCommand::class);
+        $registry->register('module:info', \VelvetCMS\Commands\Module\InfoModuleCommand::class);
         $registry->register('module:compile', \VelvetCMS\Commands\Module\CompileModuleCommand::class);
-        $registry->register('module:migrate-artifacts', MigrateModuleArtifactsCommand::class);
+        $registry->register('module:provision', ProvisionModuleCommand::class);
         $registry->register('module:enable', \VelvetCMS\Commands\Module\EnableModuleCommand::class);
         $registry->register('module:disable', \VelvetCMS\Commands\Module\DisableModuleCommand::class);
     } catch (\Throwable $e) {

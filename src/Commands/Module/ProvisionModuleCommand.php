@@ -8,7 +8,7 @@ use VelvetCMS\Commands\Command;
 use VelvetCMS\Commands\Concerns\InteractsWithTenancy;
 use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 
-class MigrateModuleArtifactsCommand extends Command
+class ProvisionModuleCommand extends Command
 {
     use InteractsWithTenancy;
 
@@ -19,12 +19,12 @@ class MigrateModuleArtifactsCommand extends Command
 
     public function signature(): string
     {
-        return 'module:migrate-artifacts [--tenant=] [--all-tenants] [--dry-run]';
+        return 'module:provision [--tenant=] [--all-tenants] [--dry-run]';
     }
 
     public function description(): string
     {
-        return 'Migrate global module state/compiled/autoload artifacts to tenant-scoped storage';
+        return 'Provision tenant-scoped module artifacts from global state';
     }
 
     public function handle(): int
