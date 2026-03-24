@@ -385,9 +385,6 @@ class InstallCommand extends Command
         $this->success('  Configuration saved');
     }
 
-    /** Config files that are framework-internal and must not be user-overridden. */
-    private const array INTERNAL_CONFIGS = ['version.php'];
-
     private function ensureUserConfig(): void
     {
         $userConfigDir = base_path('user/config');
@@ -400,11 +397,6 @@ class InstallCommand extends Command
 
         foreach ($files as $file) {
             $filename = basename($file);
-
-            if (in_array($filename, self::INTERNAL_CONFIGS, true)) {
-                continue;
-            }
-
             $target = $userConfigDir . '/' . $filename;
             if (!file_exists($target)) {
                 copy($file, $target);

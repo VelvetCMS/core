@@ -51,7 +51,7 @@ class SetCommand extends Command
         } elseif ($value === 'false') {
             $value = false;
         } elseif (is_numeric($value)) {
-            $value = (strpos($value, '.') !== false) ? (float)$value : (int)$value;
+            $value = str_contains($value, '.') ? (float)$value : (int)$value;
         }
 
         try {

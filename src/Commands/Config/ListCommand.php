@@ -21,19 +21,78 @@ class ListCommand extends Command
 
     public function signature(): string
     {
-        return 'config:list';
+        return 'config:list [namespace]';
     }
 
     public function description(): string
     {
-        return 'List all configuration values';
+        return 'List configuration values (optionally filtered by namespace)';
     }
 
     public function handle(): int
     {
+        $namespace = $this->argument(0);
         $all = $this->config->all();
-        $this->printArray($all);
+
+        if ($namespace !== null) {
+            $filtered = $this->filterByNamespace($all, (string) $namespace);
+
+            if ($filtered === []) {
+                $this->line("No configuration found for namespace '{$namespace}'.");
+                return 0;
+            }
+
+            $this->line("\033[1mNamespace: {$namespace}\033[0m");
+            $this->line();
+            $this->printArray($filtered);
+            return 0;
+        }
+
+        $core = [];
+        $namespaced = [];
+
+        foreach ($all as $key => $value) {
+            if (str_contains((string) $key, ':')) {
+                $namespaced[$key] = $value;
+            } else {
+                $core[$key] = $value;
+            }
+        }
+
+        if ($core !== []) {
+            $this->line("\033[1mCore\033[0m");
+            $this->line();
+            $this->printArray($core);
+        }
+
+        $grouped = [];
+        foreach ($namespaced as $key => $value) {
+            [$ns] = explode(':', (string) $key, 2);
+            $grouped[$ns][$key] = $value;
+        }
+
+        foreach ($grouped as $ns => $items) {
+            $this->line();
+            $this->line("\033[1mModule: {$ns}\033[0m");
+            $this->line();
+            $this->printArray($items);
+        }
+
         return 0;
+    }
+
+    private function filterByNamespace(array $all, string $namespace): array
+    {
+        $prefix = $namespace . ':';
+        $filtered = [];
+
+        foreach ($all as $key => $value) {
+            if (str_starts_with((string) $key, $prefix)) {
+                $filtered[$key] = $value;
+            }
+        }
+
+        return $filtered;
     }
 
     private function printArray(array $data, int $indent = 0): void

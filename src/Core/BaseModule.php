@@ -86,23 +86,6 @@ abstract class BaseModule implements Module
     {
     }
 
-    protected function mergeConfigFrom(string $path, string $key): void
-    {
-        if (!file_exists($path)) {
-            return;
-        }
-
-        $moduleConfig = require $path;
-        if (!is_array($moduleConfig)) {
-            return;
-        }
-
-        $currentConfig = config($key, []);
-        $merged = array_replace_recursive($moduleConfig, $currentConfig);
-
-        config([$key => $merged]);
-    }
-
     protected function loadRoutesFrom(string $path): void
     {
         if (!file_exists($path)) {

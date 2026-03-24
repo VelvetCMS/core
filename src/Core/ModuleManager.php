@@ -99,6 +99,11 @@ class ModuleManager
         // Register module's public assets if available
         $this->registerModuleAssets($module);
 
+        $configDir = $path . '/config';
+        if (is_dir($configDir)) {
+            ConfigRepository::getInstance()->registerNamespace($name, $configDir);
+        }
+
         $this->modules[$name] = $module;
         $this->manifests[$name] = $manifest;
     }
@@ -153,7 +158,7 @@ class ModuleManager
             // Check each namespace mapping
             foreach ($psr4 as $namespace => $path) {
                 // Check if class is in this namespace
-                if (strpos($class, $namespace) !== 0) {
+                if (!str_starts_with($class, $namespace)) {
                     continue;
                 }
 
@@ -175,6 +180,12 @@ class ModuleManager
             $module->register($this->app);
         }
 
+        if ($this->app->has('events')) {
+            $this->app->get('events')->listen('commands.registering', function (object $registry): void {
+                $this->registerManifestCommands($registry);
+            });
+        }
+
         return $this;
     }
 
@@ -184,13 +195,69 @@ class ModuleManager
             return $this;
         }
 
-        foreach ($this->modules as $module) {
+        foreach ($this->modules as $name => $module) {
+            $this->autoRegisterViews($name);
             $module->boot($this->app);
+            $this->autoLoadRoutes($name);
         }
 
         $this->booted = true;
 
         return $this;
+    }
+
+    private function autoRegisterViews(string $name): void
+    {
+        if (!$this->app->has('view')) {
+            return;
+        }
+
+        $manifest = $this->manifests[$name];
+        $path = $manifest->path;
+
+        if (!str_starts_with($path, '/')) {
+            $path = $this->basePath . '/' . $path;
+        }
+
+        $viewsDir = $path . '/resources/views';
+        if (is_dir($viewsDir)) {
+            $this->app->get('view')->namespace($name, $viewsDir);
+        }
+    }
+
+    private function autoLoadRoutes(string $name): void
+    {
+        $manifest = $this->manifests[$name];
+
+        if (($manifest->extra['autoload']['routes'] ?? true) === false) {
+            return;
+        }
+
+        $path = $manifest->path;
+        if (!str_starts_with($path, '/')) {
+            $path = $this->basePath . '/' . $path;
+        }
+
+        $router = $this->app->has('router') ? $this->app->get('router') : null;
+        if ($router === null) {
+            return;
+        }
+
+        foreach (['web.php', 'api.php'] as $routeFile) {
+            $routePath = $path . '/routes/' . $routeFile;
+            if (file_exists($routePath)) {
+                require $routePath;
+            }
+        }
+    }
+
+    private function registerManifestCommands(object $registry): void
+    {
+        foreach ($this->manifests as $manifest) {
+            foreach ($manifest->commands as $signature => $class) {
+                $registry->register($signature, $class);
+            }
+        }
     }
 
     /** @return array<string, Module> */

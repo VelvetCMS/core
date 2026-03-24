@@ -204,53 +204,6 @@ final class BaseModuleTest extends TestCase
         $this->assertTrue($module->bootCalled);
     }
 
-    // === Config Merging ===
-
-    public function test_merge_config_from_merges_module_config(): void
-    {
-        // Create a module config file
-        $configPath = $this->modulePath . '/config/module.php';
-        $this->mkdir(dirname($configPath));
-        file_put_contents($configPath, '<?php return ["key" => "module_value", "only_module" => true];');
-
-        // Set existing app config
-        config(['testmodule' => ['key' => 'app_value', 'only_app' => true]]);
-
-        $module = $this->createModule();
-        $module->testMergeConfigFrom($configPath, 'testmodule');
-
-        // App values should override module values
-        $this->assertSame('app_value', config('testmodule.key'));
-        // Module-only values should be added
-        $this->assertTrue(config('testmodule.only_module'));
-        // App-only values should remain
-        $this->assertTrue(config('testmodule.only_app'));
-    }
-
-    public function test_merge_config_from_handles_missing_file(): void
-    {
-        $module = $this->createModule();
-
-        // Should not throw
-        $module->testMergeConfigFrom('/nonexistent/config.php', 'test');
-
-        $this->assertTrue(true);
-    }
-
-    public function test_merge_config_from_handles_non_array_config(): void
-    {
-        $configPath = $this->modulePath . '/config/invalid.php';
-        $this->mkdir(dirname($configPath));
-        file_put_contents($configPath, '<?php return "not an array";');
-
-        $module = $this->createModule();
-
-        // Should not throw
-        $module->testMergeConfigFrom($configPath, 'test');
-
-        $this->assertTrue(true);
-    }
-
     // === Views Loading ===
 
     public function test_load_views_from_registers_namespace(): void
@@ -311,11 +264,6 @@ class TestModule extends BaseModule
     }
 
     // Expose protected methods for testing
-    public function testMergeConfigFrom(string $path, string $key): void
-    {
-        $this->mergeConfigFrom($path, $key);
-    }
-
     public function testLoadViewsFrom(string $path, string $namespace): void
     {
         $this->loadViewsFrom($path, $namespace);
