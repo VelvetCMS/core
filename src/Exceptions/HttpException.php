@@ -9,7 +9,7 @@ use Throwable;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
-class HttpException extends RuntimeException implements RenderableExceptionInterface
+class HttpException extends RuntimeException
 {
     public function __construct(
         private readonly int $status,

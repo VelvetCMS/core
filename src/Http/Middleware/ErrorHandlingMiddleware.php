@@ -6,14 +6,14 @@ namespace VelvetCMS\Http\Middleware;
 
 use Throwable;
 use VelvetCMS\Contracts\MiddlewareInterface;
-use VelvetCMS\Exceptions\ExceptionHandlerInterface;
+use VelvetCMS\Exceptions\Handler;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
 final class ErrorHandlingMiddleware implements MiddlewareInterface
 {
     public function __construct(
-        private readonly ExceptionHandlerInterface $handler,
+        private readonly Handler $handler,
     ) {
     }
 

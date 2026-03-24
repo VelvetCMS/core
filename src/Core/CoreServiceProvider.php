@@ -39,7 +39,6 @@ class CoreServiceProvider extends ServiceProvider
                 $reporters
             );
         });
-        $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\ExceptionHandlerInterface::class);
         $this->app->alias('exceptions.handler', \VelvetCMS\Exceptions\Handler::class);
 
         $this->app->singleton('router', function () {

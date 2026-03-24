@@ -5,7 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Http;
 
 use RuntimeException;
-use VelvetCMS\Exceptions\ExceptionHandlerInterface;
+use VelvetCMS\Core\EventDispatcher;
+use VelvetCMS\Exceptions\Handler;
 use VelvetCMS\Http\Middleware\ErrorHandlingMiddleware;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
@@ -15,7 +16,7 @@ final class ErrorHandlingMiddlewareTest extends TestCase
 {
     public function test_passes_through_when_no_exception(): void
     {
-        $handler = new RecordingExceptionHandler();
+        $handler = new RecordingExceptionHandler(new EventDispatcher());
         $middleware = new ErrorHandlingMiddleware($handler);
         $request = $this->makeRequest('GET', '/');
 
@@ -29,7 +30,7 @@ final class ErrorHandlingMiddlewareTest extends TestCase
 
     public function test_reports_and_renders_on_exception(): void
     {
-        $handler = new RecordingExceptionHandler();
+        $handler = new RecordingExceptionHandler(new EventDispatcher());
         $middleware = new ErrorHandlingMiddleware($handler);
         $request = $this->makeRequest('GET', '/');
 
@@ -44,7 +45,7 @@ final class ErrorHandlingMiddlewareTest extends TestCase
     }
 }
 
-final class RecordingExceptionHandler implements ExceptionHandlerInterface
+final class RecordingExceptionHandler extends Handler
 {
     public bool $reported = false;
     public bool $rendered = false;

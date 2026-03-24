@@ -11,7 +11,7 @@ use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
-class Handler implements ExceptionHandlerInterface
+class Handler
 {
     private LoggerInterface $logger;
 
@@ -37,11 +37,6 @@ class Handler implements ExceptionHandlerInterface
         $payload = ['exception' => $e, 'request' => $request];
         $this->events->dispatch('exception.reporting', $payload);
 
-        if ($e instanceof ReportableExceptionInterface) {
-            $e->report($this->logger);
-            return;
-        }
-
         foreach ($this->reporters as $class => $reporter) {
             if ($e instanceof $class) {
                 $reporter($e, $request, $this->logger);
@@ -56,10 +51,6 @@ class Handler implements ExceptionHandlerInterface
     {
         $payload = ['exception' => $e, 'request' => $request];
         $this->events->dispatch('exception.rendering', $payload);
-
-        if ($e instanceof RenderableExceptionInterface) {
-            return $e->toResponse($request);
-        }
 
         foreach ($this->renderers as $class => $renderer) {
             if ($e instanceof $class) {
