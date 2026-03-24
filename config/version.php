@@ -8,8 +8,8 @@ declare(strict_types=1);
 return [
     /** VelvetCMS Core version information */
     'core' => [
-        'version' => '2.0.0',
-        'release_date' => '2026-03-19',
+        'version' => '2.1.0',
+        'release_date' => '2026-03-24',
         'stability' => 'stable',
         'php' => '^8.4',
         'api_version' => '2',
