@@ -32,6 +32,7 @@ class MakeModuleCommand extends GeneratorCommand
 
         $moduleName = $name;
         $className = $this->formatClassName($name);
+        $slug = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $moduleName));
 
         $basePath = base_path("user/modules/{$moduleName}");
 
@@ -43,21 +44,25 @@ class MakeModuleCommand extends GeneratorCommand
         $this->info("Creating module structure for {$moduleName}...");
         mkdir($basePath, 0755, true);
         mkdir("{$basePath}/src", 0755, true);
+        mkdir("{$basePath}/config", 0755, true);
+        mkdir("{$basePath}/resources/views", 0755, true);
+        mkdir("{$basePath}/routes", 0755, true);
 
         $manifest = [
-            'name' => strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $moduleName)),
+            'name' => $slug,
             'version' => '1.0.0',
             'path' => '.',
             'entry' => "{$className}\\Module",
             'description' => "The {$moduleName} module.",
             'requires' => [
-                'core' => '>=1.0.0'
+                'core' => '>=2.0.0',
             ],
+            'commands' => new \stdClass(),
             'autoload' => [
                 'psr-4' => [
-                    "{$className}\\" => 'src/'
-                ]
-            ]
+                    "{$className}\\" => 'src/',
+                ],
+            ],
         ];
 
         file_put_contents(
@@ -73,17 +78,9 @@ declare(strict_types=1);
 namespace {{ namespace }};
 
 use VelvetCMS\Core\BaseModule;
-use VelvetCMS\Core\Application;
 
 class Module extends BaseModule
 {
-    public function boot(Application $app): void
-    {
-    }
-
-    public function register(Application $app): void
-    {
-    }
 }
 PHP;
 
@@ -93,11 +90,20 @@ PHP;
 
         file_put_contents("{$basePath}/src/Module.php", $content);
 
+        $configStub = <<<'PHP'
+<?php
+
+return [
+];
+PHP;
+
+        file_put_contents("{$basePath}/config/general.php", $configStub);
+
         $composer = [
             'name' => 'velvet-modules/' . strtolower($moduleName),
             'description' => $manifest['description'],
             'type' => 'velvetcms-module',
-            'autoload' => $manifest['autoload']
+            'autoload' => $manifest['autoload'],
         ];
 
         file_put_contents(
@@ -106,7 +112,7 @@ PHP;
         );
 
         $this->success("Module [{$moduleName}] created successfully in user/modules/{$moduleName}.");
-        $this->info("Run 'php velvet module:enable {$manifest['name']}' to activate it.");
+        $this->info("Run 'php velvet module:enable {$slug}' to activate it.");
 
         return 0;
     }

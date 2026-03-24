@@ -17,6 +17,7 @@ final class ModuleManifest
      * @param array<string, string> $requires
      * @param string[] $conflicts
      * @param array<string, mixed> $provides
+     * @param array<string, string> $commands  Signature → FQCN
      * @param array<string, mixed> $extra
      */
     public function __construct(
@@ -28,6 +29,7 @@ final class ModuleManifest
         public readonly array $requires = [],
         public readonly array $conflicts = [],
         public readonly array $provides = [],
+        public readonly array $commands = [],
         public readonly ?string $description = null,
         public readonly ?string $stability = null,
         public readonly array $extra = [],
@@ -60,6 +62,8 @@ final class ModuleManifest
         $conflicts = is_array($data['conflicts'] ?? null) ? array_values($data['conflicts']) : [];
         $provides = is_array($data['provides'] ?? null) ? $data['provides'] : [];
 
+        $commands = is_array($data['commands'] ?? null) ? self::normalizeCommands($data['commands']) : [];
+
         $description = isset($data['description']) ? (string) $data['description'] : null;
         $stability = isset($data['stability']) ? (string) $data['stability'] : null;
 
@@ -72,6 +76,7 @@ final class ModuleManifest
             'requires' => true,
             'conflicts' => true,
             'provides' => true,
+            'commands' => true,
             'description' => true,
             'stability' => true,
         ];
@@ -92,6 +97,7 @@ final class ModuleManifest
             requires: self::normalizeRequires($requires),
             conflicts: self::normalizeStringList($conflicts),
             provides: $provides,
+            commands: $commands,
             description: $description,
             stability: $stability,
             extra: $extra,
@@ -110,6 +116,7 @@ final class ModuleManifest
             'requires' => $this->requires,
             'conflicts' => $this->conflicts,
             'provides' => $this->provides,
+            'commands' => $this->commands,
             'description' => $this->description,
             'stability' => $this->stability,
         ], $this->extra);
@@ -140,5 +147,20 @@ final class ModuleManifest
             }
         }
         return $out;
+    }
+
+    /** @param array<mixed, mixed> $commands */
+    private static function normalizeCommands(array $commands): array
+    {
+        $normalized = [];
+
+        foreach ($commands as $signature => $class) {
+            if (!is_string($signature) || $signature === '' || !is_string($class) || $class === '') {
+                continue;
+            }
+            $normalized[$signature] = $class;
+        }
+
+        return $normalized;
     }
 }

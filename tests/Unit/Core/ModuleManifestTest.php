@@ -65,6 +65,7 @@ final class ModuleManifestTest extends TestCase
             requires: ['core' => '^1.0'],
             conflicts: ['old-module'],
             provides: ['feature' => '1.0'],
+            commands: ['cmd:test' => 'MyModule\\Commands\\TestCommand'],
             description: 'A test module',
             stability: 'stable',
             extra: ['custom' => 'value'],
@@ -78,6 +79,7 @@ final class ModuleManifestTest extends TestCase
         $this->assertSame(['core' => '^1.0'], $manifest->requires);
         $this->assertSame(['old-module'], $manifest->conflicts);
         $this->assertSame(['feature' => '1.0'], $manifest->provides);
+        $this->assertSame(['cmd:test' => 'MyModule\\Commands\\TestCommand'], $manifest->commands);
         $this->assertSame('A test module', $manifest->description);
         $this->assertSame('stable', $manifest->stability);
         $this->assertSame(['custom' => 'value'], $manifest->extra);
@@ -206,6 +208,60 @@ final class ModuleManifestTest extends TestCase
         ], $manifest->extra);
     }
 
+    public function test_from_array_parses_commands(): void
+    {
+        $manifest = ModuleManifest::fromArray('test', [
+            'path' => '/path',
+            'entry' => 'Entry\\Class',
+            'commands' => [
+                'mod:action' => 'Module\\Commands\\ActionCommand',
+                'mod:other' => 'Module\\Commands\\OtherCommand',
+            ],
+        ]);
+
+        $this->assertSame([
+            'mod:action' => 'Module\\Commands\\ActionCommand',
+            'mod:other' => 'Module\\Commands\\OtherCommand',
+        ], $manifest->commands);
+    }
+
+    public function test_from_array_normalizes_commands(): void
+    {
+        $manifest = ModuleManifest::fromArray('test', [
+            'path' => '/path',
+            'entry' => 'Entry\\Class',
+            'commands' => [
+                'valid:cmd' => 'Valid\\Command',
+                '' => 'EmptyKey\\Command',
+                'empty-class' => '',
+            ],
+        ]);
+
+        $this->assertSame(['valid:cmd' => 'Valid\\Command'], $manifest->commands);
+    }
+
+    public function test_from_array_handles_non_array_commands(): void
+    {
+        $manifest = ModuleManifest::fromArray('test', [
+            'path' => '/path',
+            'entry' => 'Entry\\Class',
+            'commands' => 'not-an-array',
+        ]);
+
+        $this->assertSame([], $manifest->commands);
+    }
+
+    public function test_commands_not_captured_as_extra(): void
+    {
+        $manifest = ModuleManifest::fromArray('test', [
+            'path' => '/path',
+            'entry' => 'Entry\\Class',
+            'commands' => ['cmd:test' => 'Test\\Command'],
+        ]);
+
+        $this->assertArrayNotHasKey('commands', $manifest->extra);
+    }
+
     // === toArray Round-trip ===
 
     public function test_to_array_includes_all_fields(): void
@@ -219,6 +275,7 @@ final class ModuleManifestTest extends TestCase
             requires: ['core' => '^1.0'],
             conflicts: ['old-module'],
             provides: ['feature' => '1.0'],
+            commands: ['mod:test' => 'MyModule\\Commands\\TestCommand'],
             description: 'Description',
             stability: 'beta',
             extra: ['custom' => 'data'],
@@ -234,6 +291,7 @@ final class ModuleManifestTest extends TestCase
         $this->assertSame(['core' => '^1.0'], $array['requires']);
         $this->assertSame(['old-module'], $array['conflicts']);
         $this->assertSame(['feature' => '1.0'], $array['provides']);
+        $this->assertSame(['mod:test' => 'MyModule\\Commands\\TestCommand'], $array['commands']);
         $this->assertSame('Description', $array['description']);
         $this->assertSame('beta', $array['stability']);
         $this->assertSame('data', $array['custom']); // Extra merged in
@@ -289,12 +347,14 @@ final class ModuleManifestTest extends TestCase
             requires: [],
             conflicts: [],
             provides: [],
+            commands: [],
             extra: [],
         );
 
         $this->assertSame([], $manifest->requires);
         $this->assertSame([], $manifest->conflicts);
         $this->assertSame([], $manifest->provides);
+        $this->assertSame([], $manifest->commands);
         $this->assertSame([], $manifest->extra);
     }
 }

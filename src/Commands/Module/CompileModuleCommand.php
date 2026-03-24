@@ -129,6 +129,7 @@ class CompileModuleCommand extends Command
                 'requires' => $typed->requires,
                 'conflicts' => $typed->conflicts,
                 'provides' => $typed->provides,
+                'commands' => $typed->commands,
                 'description' => $typed->description,
                 'stability' => $typed->stability,
                 'extra' => $typed->extra,
