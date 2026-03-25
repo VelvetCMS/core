@@ -12,6 +12,8 @@ storage/logs/*
 !storage/logs/.gitkeep
 storage/sessions/*
 !storage/sessions/.gitkeep
+storage/index/*
+!storage/index/.gitkeep
 storage/modules.json
 storage/modules-compiled.json
 storage/modules-autoload.php
