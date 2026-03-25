@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../vendor/autoload.php';
 
-use VelvetCMS\Exceptions\ExceptionHandlerInterface;
+use VelvetCMS\Exceptions\Handler;
 use VelvetCMS\Exceptions\NotFoundException;
 use VelvetCMS\Http\AssetServer;
 use VelvetCMS\Http\Request;
@@ -34,7 +34,7 @@ if (file_exists($routeCacheFile)) {
     $app->registerDefaultRoutes($router);
 }
 
-$handler = $app->make(ExceptionHandlerInterface::class);
+$handler = $app->make(Handler::class);
 try {
     $response = $router->dispatch($request);
 } catch (\Throwable $e) {
