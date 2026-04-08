@@ -4,11 +4,16 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core;
 
+use VelvetCMS\Core\Tenancy\TenancyState;
+
 class Application
 {
     private static ?Application $instance = null;
 
     public EventDispatcher $events;
+
+    private Paths $paths;
+    private TenancyState $tenancyState;
 
     private array $services = [];
     private array $instances = [];
@@ -16,15 +21,29 @@ class Application
     private array $reflectionCache = [];
     private array $providers = [];
     private bool $booted = false;
-    private string $basePath;
 
-    public function __construct(string $basePath)
-    {
-        $this->basePath = $basePath;
+    public function __construct(
+        string $basePath,
+        ?ConfigRepository $configRepository = null,
+        ?TenancyState $tenancyState = null,
+    ) {
+        $bootstrapPaths = new Paths($basePath);
+        $this->tenancyState = $tenancyState ?? TenancyState::fromConfigFile($bootstrapPaths->config('tenancy.php'));
+        $this->paths = new Paths($basePath, $this->tenancyState);
         $this->events = new EventDispatcher();
 
         $this->instance(self::class, $this);
         $this->instance(Application::class, $this);
+        $this->instance('paths', $this->paths);
+        $this->alias('paths', Paths::class);
+        $this->instance(TenancyState::class, $this->tenancyState);
+        $this->instance('tenancy.state', $this->tenancyState);
+
+        self::setInstance($this);
+
+        $configRepository ??= $this->createConfigRepository();
+        $this->instance('config', $configRepository);
+        $this->instance(ConfigRepository::class, $configRepository);
 
         $this->register(CoreServiceProvider::class);
     }
@@ -228,7 +247,25 @@ class Application
 
     public function basePath(string $path = ''): string
     {
-        return $this->basePath . ($path ? DIRECTORY_SEPARATOR . $path : '');
+        return $this->paths->base($path);
+    }
+
+    private function createConfigRepository(): ConfigRepository
+    {
+        $tenantConfigPath = function (): ?string {
+            if (!$this->tenancyState->isEnabled() || $this->tenancyState->currentId() === null) {
+                return null;
+            }
+
+            return $this->paths->tenantUser('config');
+        };
+
+        return new ConfigRepository(
+            $this->paths->config(),
+            $this->paths->storage('cache/config.php'),
+            $this->paths->user('config'),
+            $tenantConfigPath,
+        );
     }
 
     public function environment(): string
@@ -243,46 +280,7 @@ class Application
 
     public function registerDefaultRoutes(\VelvetCMS\Http\Routing\Router $router): void
     {
-        $pages = $this->make('pages');
-        $view = $this->make('view');
-
-        $router->get('/', function (\VelvetCMS\Http\Request $request) use ($pages, $view) {
-            try {
-                $page = $pages->load('welcome');
-                $layout = 'layouts/' . ($page->layout ?? 'default');
-                $contentVars = ['page' => $page];
-                $content = $page->trusted
-                    ? $view->compileString($page->html(), $contentVars)
-                    : $view->safe($page->html(), $contentVars);
-                return \VelvetCMS\Http\Response::html($view->render($layout, [
-                    'page' => $page,
-                    'content' => $content,
-                ]));
-            } catch (\Exception $e) {
-                return \VelvetCMS\Http\Response::html('<h1>Welcome to VelvetCMS</h1><p>Create a welcome.md page to get started.</p>');
-            }
-        });
-
-        $router->get('/{slug*}', function (\VelvetCMS\Http\Request $request, string $slug) use ($pages, $view) {
-            try {
-                $page = $pages->load($slug);
-
-                if (!$page->isPublished() && !config('app.debug', false)) {
-                    return \VelvetCMS\Http\Response::notFound('Page not found');
-                }
-
-                $layout = 'layouts/' . ($page->layout ?? 'default');
-                $contentVars = ['page' => $page];
-                $content = $page->trusted
-                    ? $view->compileString($page->html(), $contentVars)
-                    : $view->safe($page->html(), $contentVars);
-                return \VelvetCMS\Http\Response::html($view->render($layout, [
-                    'page' => $page,
-                    'content' => $content,
-                ]));
-            } catch (\VelvetCMS\Exceptions\NotFoundException $e) {
-                return \VelvetCMS\Http\Response::notFound('Page not found');
-            }
-        });
+        $router->get('/', [\VelvetCMS\Http\Controllers\PageController::class, 'home']);
+        $router->get('/{slug*}', [\VelvetCMS\Http\Controllers\PageController::class, 'show']);
     }
 }

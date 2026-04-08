@@ -11,37 +11,20 @@ use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
 
 final class VersionRegistry
 {
-    private static ?self $instance = null;
-
-    /** @var array<string, mixed> */
-    private array $manifest;
-
     private VersionParser $parser;
 
-    private function __construct(array $manifest)
-    {
-        $this->manifest = $manifest;
-        $this->mergeCompiledModules();
+    public function __construct(
+        private readonly ConfigRepository $configRepository,
+        private readonly ModuleArtifactPaths $artifactPaths,
+    ) {
         $this->parser = new VersionParser();
-    }
-
-    private function mergeCompiledModules(): void
-    {
-        $compiled = $this->loadCompiledModules();
-
-        if ($compiled === []) {
-            return;
-        }
-
-        $current = $this->manifest['modules'] ?? [];
-        $this->manifest['modules'] = array_merge($current, $compiled);
     }
 
     /** @return array<string, array<string, mixed>> */
     private function loadCompiledModules(): array
     {
         $path = null;
-        foreach (ModuleArtifactPaths::compiledCandidates() as $candidate) {
+        foreach ($this->artifactPaths->compiledCandidates() as $candidate) {
             if (is_file($candidate)) {
                 $path = $candidate;
                 break;
@@ -88,26 +71,22 @@ final class VersionRegistry
         return $modules;
     }
 
-    public static function instance(): self
-    {
-        if (self::$instance === null) {
-            $manifest = (array) config('version', []);
-            self::$instance = new self($manifest);
-        }
-
-        return self::$instance;
-    }
-
     /** @return array<string, mixed> */
     public function getComponent(string $name = 'core'): array
     {
+        $manifest = $this->manifest();
+
         if ($name === 'core') {
-            return $this->manifest['core'] ?? [];
+            $core = $manifest['core'] ?? [];
+
+            return is_array($core) ? $core : [];
         }
 
-        $modules = $this->manifest['modules'] ?? [];
+        $modules = $manifest['modules'] ?? [];
 
-        return $modules[$name] ?? [];
+        return is_array($modules) && isset($modules[$name]) && is_array($modules[$name])
+            ? $modules[$name]
+            : [];
     }
 
     public function getVersion(string $name = 'core'): string
@@ -138,12 +117,15 @@ final class VersionRegistry
     /** @return array<string, array<string, mixed>> */
     public function getModules(): array
     {
-        return $this->manifest['modules'] ?? [];
+        $modules = $this->manifest()['modules'] ?? [];
+
+        return is_array($modules) ? $modules : [];
     }
 
     public function hasModule(string $name): bool
     {
-        $modules = $this->manifest['modules'] ?? [];
+        $modules = $this->manifest()['modules'] ?? [];
+
         return isset($modules[$name]);
     }
 
@@ -253,5 +235,23 @@ final class VersionRegistry
         }
 
         return 'stable';
+    }
+
+    /** @return array<string, mixed> */
+    private function manifest(): array
+    {
+        $manifest = $this->configRepository->get('version', []);
+
+        if (!is_array($manifest)) {
+            $manifest = [];
+        }
+
+        $compiled = $this->loadCompiledModules();
+        if ($compiled !== []) {
+            $current = $manifest['modules'] ?? [];
+            $manifest['modules'] = array_merge(is_array($current) ? $current : [], $compiled);
+        }
+
+        return $manifest;
     }
 }

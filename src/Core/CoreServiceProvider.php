@@ -4,32 +4,47 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core;
 
+use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
+use VelvetCMS\Core\Tenancy\TenancyState;
+use VelvetCMS\Core\Tenancy\TenantDiscovery;
+use VelvetCMS\Database\Schema\Schema;
+use VelvetCMS\Http\AssetServer;
+use VelvetCMS\Http\Client\HttpClient;
 use VelvetCMS\Http\Routing\Router;
+use VelvetCMS\Validation\ValidationExtensionRegistry;
 
 class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $configRepository = ConfigRepository::getInstance();
-        $this->app->instance('config', $configRepository);
-        $this->app->instance(ConfigRepository::class, $configRepository);
-
         $this->app->singleton('events', fn () => new EventDispatcher());
         $this->app->alias('events', EventDispatcher::class);
 
+        $this->app->singleton(ModuleArtifactPaths::class, fn () => new ModuleArtifactPaths($this->paths(), $this->tenancyState()));
+        $this->app->singleton(TenantDiscovery::class, fn () => new TenantDiscovery($this->paths(), $this->tenancyState()));
+        $this->app->singleton(VersionRegistry::class, fn () => new VersionRegistry(
+            $this->app->make(ConfigRepository::class),
+            $this->app->make(ModuleArtifactPaths::class),
+        ));
+        $this->app->singleton(AssetServer::class, fn () => new AssetServer());
+        $this->app->singleton(ValidationExtensionRegistry::class, fn () => new ValidationExtensionRegistry());
+        $this->app->singleton(HttpClient::class, fn () => new HttpClient());
+
         $this->app->singleton('logger', function () {
+            $paths = $this->paths();
+
             return new \VelvetCMS\Services\FileLogger(
-                logPath: config('logging.path', storage_path('logs/velvet.log')),
-                level: config('logging.level', config('app.log_level', 'info')),
-                daily: config('logging.daily', false),
-                maxFiles: config('logging.max_files', 7)
+                logPath: $this->config('logging.path', $paths->storage('logs/velvet.log')),
+                level: $this->config('logging.level', $this->config('app.log_level', 'info')),
+                daily: (bool) $this->config('logging.daily', false),
+                maxFiles: (int) $this->config('logging.max_files', 7)
             );
         });
         $this->app->alias('logger', \Psr\Log\LoggerInterface::class);
 
         $this->app->singleton('exceptions.handler', function () {
-            $renderers = (array) config('exceptions.renderers', []);
-            $reporters = (array) config('exceptions.reporters', []);
+            $renderers = (array) $this->config('exceptions.renderers', []);
+            $reporters = (array) $this->config('exceptions.reporters', []);
             $logger = $this->app->make(\Psr\Log\LoggerInterface::class);
 
             return new \VelvetCMS\Exceptions\Handler(
@@ -45,7 +60,7 @@ class CoreServiceProvider extends ServiceProvider
             $router = new Router($this->app->get('events'));
             $router->setApp($this->app);
 
-            $middlewareConfig = (array) config('http.middleware', []);
+            $middlewareConfig = (array) $this->config('http.middleware', []);
             $aliases = (array) ($middlewareConfig['aliases'] ?? []);
             $global = (array) ($middlewareConfig['global'] ?? []);
 
@@ -73,28 +88,39 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('router', Router::class);
 
         $this->app->singleton('db', function () {
-            $config = config('db');
+            $config = $this->config('db');
 
             if (!is_array($config)) {
                 throw new \RuntimeException('Database configuration not found.');
             }
 
-            if (tenant_enabled() && tenant_id() !== null) {
-                $config = $this->resolveTenantDatabase(tenant_id(), $config);
+            $tenancyState = $this->tenancyState();
+
+            if ($tenancyState->isEnabled() && $tenancyState->currentId() !== null) {
+                $config = $this->resolveTenantDatabase((string) $tenancyState->currentId(), $config);
             }
 
             return new \VelvetCMS\Database\Connection($config);
         });
         $this->app->alias('db', \VelvetCMS\Database\Connection::class);
 
+        $this->app->singleton('schema', function () {
+            return new Schema($this->app->make(\VelvetCMS\Database\Connection::class));
+        });
+        $this->app->alias('schema', Schema::class);
+
         $this->app->singleton('cache', function () {
-            $driver = config('cache.default', 'file');
-            $config = config("cache.drivers.{$driver}", []);
-            $config['path'] = $config['path'] ?? storage_path('cache');
-            $prefix = $config['prefix'] ?? config('cache.prefix', 'velvet');
-            if (tenant_enabled() && tenant_id() !== null) {
-                $prefix = rtrim($prefix, ':') . ':' . tenant_id();
+            $driver = (string) $this->config('cache.default', 'file');
+            $config = $this->config("cache.drivers.{$driver}", []);
+            $config = is_array($config) ? $config : [];
+            $config['path'] = $config['path'] ?? $this->paths()->storage('cache');
+            $prefix = $config['prefix'] ?? $this->config('cache.prefix', 'velvet');
+            $tenancyState = $this->tenancyState();
+
+            if ($tenancyState->isEnabled() && $tenancyState->currentId() !== null) {
+                $prefix = rtrim($prefix, ':') . ':' . $tenancyState->currentId();
             }
+
             $config['prefix'] = $prefix;
 
             return match ($driver) {
@@ -106,7 +132,7 @@ class CoreServiceProvider extends ServiceProvider
         });
         $this->app->alias('cache', \VelvetCMS\Contracts\CacheDriver::class);
 
-        $this->app->singleton('tenant', fn () => \VelvetCMS\Core\Tenancy\TenancyManager::current());
+        $this->app->bind('tenant', fn () => $this->app->make(TenancyState::class)->current());
         $this->app->alias('tenant', \VelvetCMS\Core\Tenancy\TenantContext::class);
 
         $this->app->singleton('cache.tags', function () {
@@ -117,8 +143,9 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->alias('cache.tags', \VelvetCMS\Support\Cache\CacheTagManager::class);
 
         $this->app->singleton(\VelvetCMS\Contracts\ParserInterface::class, function () {
-            $driver = config('content.parser.driver', 'commonmark');
-            $driverConfig = config("content.parser.drivers.{$driver}", []);
+            $driver = (string) $this->config('content.parser.driver', 'commonmark');
+            $driverConfig = $this->config("content.parser.drivers.{$driver}", []);
+            $driverConfig = is_array($driverConfig) ? $driverConfig : [];
 
             return (new \VelvetCMS\Services\Parsers\ParserFactory())->make($driver, $driverConfig);
         });
@@ -126,23 +153,29 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->singleton('parser', function () {
             return new \VelvetCMS\Services\ContentParser(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class),
-                $this->app->make(\VelvetCMS\Contracts\ParserInterface::class)
+                $this->app->make(\VelvetCMS\Contracts\ParserInterface::class),
+                $this->configRepository()
             );
         });
         $this->app->alias('parser', \VelvetCMS\Services\ContentParser::class);
 
-        $this->app->singleton('view', fn () => new \VelvetCMS\Services\ViewEngine());
+        $this->app->singleton('view', fn () => new \VelvetCMS\Services\ViewEngine(
+            $this->resolveViewPath(),
+            $this->resolveCompiledViewPath()
+        ));
         $this->app->alias('view', \VelvetCMS\Services\ViewEngine::class);
 
         $this->app->singleton(\VelvetCMS\Database\Migrations\MigrationRepository::class, function () {
             return new \VelvetCMS\Database\Migrations\MigrationRepository(
-                $this->app->make(\VelvetCMS\Database\Connection::class)
+                $this->app->make(\VelvetCMS\Database\Connection::class),
+                $this->app->make(Schema::class)
             );
         });
 
         $this->app->singleton('migrator', function () {
             return new \VelvetCMS\Database\Migrations\Migrator(
                 $this->app->make(\VelvetCMS\Database\Connection::class),
+                $this->app->make(Schema::class),
                 $this->app->make(\VelvetCMS\Database\Migrations\MigrationRepository::class)
             );
         });
@@ -155,7 +188,7 @@ class CoreServiceProvider extends ServiceProvider
             $rateLimiter = new \VelvetCMS\Http\RateLimiting\RateLimiter(
                 $this->app->make(\VelvetCMS\Contracts\CacheDriver::class)
             );
-            $rateLimiter->whitelist((array) config('http.rate_limit.whitelist', []));
+            $rateLimiter->whitelist((array) $this->config('http.rate_limit.whitelist', []));
 
             return $rateLimiter;
         });
@@ -165,7 +198,9 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->singleton('schedule', fn () => new \VelvetCMS\Scheduling\Schedule());
         $this->app->alias('schedule', \VelvetCMS\Scheduling\Schedule::class);
 
-        $this->app->singleton('storage', fn () => new \VelvetCMS\Services\StorageManager(config('filesystems', [])));
+        $this->app->singleton('storage', fn () => new \VelvetCMS\Services\StorageManager(
+            (array) $this->config('filesystems', [])
+        ));
         $this->app->alias('storage', \VelvetCMS\Services\StorageManager::class);
 
         $this->app->singleton('modules', function () {
@@ -189,22 +224,16 @@ class CoreServiceProvider extends ServiceProvider
             $this->app->make('modules')->boot();
         }
 
-        if (config('app.cron_enabled', false)) {
+        if ((bool) $this->config('app.cron_enabled', false)) {
             $router = $this->app->make('router');
-            $router->get('/system/cron', function ($request) {
-                $controller = new \VelvetCMS\Http\Controllers\WebCronController(
-                    $this->app,
-                    $this->app->make(\VelvetCMS\Scheduling\Schedule::class)
-                );
-
-                return $controller->handle($request);
-            });
+            $router->get('/system/cron', [\VelvetCMS\Http\Controllers\WebCronController::class, 'handle']);
         }
     }
 
     private function resolveTenantDatabase(string $tenantId, array $config): array
     {
-        $tenancyConfig = \VelvetCMS\Core\Tenancy\TenancyManager::config();
+        $tenancyState = $this->tenancyState();
+        $tenancyConfig = $tenancyState->config();
         $dbConfig = $tenancyConfig['database'] ?? [];
 
         if (empty($dbConfig['enabled'])) {
@@ -242,5 +271,63 @@ class CoreServiceProvider extends ServiceProvider
         }
 
         return $config;
+    }
+
+    private function configRepository(): ConfigRepository
+    {
+        return $this->app->make(ConfigRepository::class);
+    }
+
+    private function paths(): Paths
+    {
+        return $this->app->make(Paths::class);
+    }
+
+    private function tenancyState(): TenancyState
+    {
+        return $this->app->make(TenancyState::class);
+    }
+
+    private function config(string $key, mixed $default = null): mixed
+    {
+        return $this->configRepository()->get($key, $default);
+    }
+
+    private function resolveViewPath(): string
+    {
+        $configuredPath = $this->config('view.path', 'user/views');
+        if (!is_string($configuredPath) || trim($configuredPath) === '') {
+            $configuredPath = 'user/views';
+        }
+
+        if (Paths::isAbsolute($configuredPath)) {
+            return rtrim($configuredPath, '/\\');
+        }
+
+        $normalizedPath = trim($configuredPath, '/\\');
+        $paths = $this->paths();
+        $tenancyState = $this->tenancyState();
+
+        if ($tenancyState->isEnabled() && $tenancyState->currentId() !== null) {
+            if ($normalizedPath === 'user') {
+                return $paths->tenantUser();
+            }
+
+            if (str_starts_with($normalizedPath, 'user/')) {
+                return $paths->tenantUser(substr($normalizedPath, strlen('user/')));
+            }
+        }
+
+        return $paths->base($normalizedPath);
+    }
+
+    private function resolveCompiledViewPath(): string
+    {
+        $configuredPath = $this->config('view.compiled', 'cache/views');
+        if (!is_string($configuredPath) || trim($configuredPath) === '') {
+            $configuredPath = 'cache/views';
+        }
+
+        return $this->paths()->storage($configuredPath);
     }
 }

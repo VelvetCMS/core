@@ -15,20 +15,20 @@ use VelvetCMS\Contracts\ContentDriver;
 use VelvetCMS\Contracts\DataStore;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Core\EventDispatcher;
+use VelvetCMS\Core\Paths;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Drivers\Data\AutoDataStore;
 use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Services\PageService;
 
+$basePath = Paths::fromBootstrapEnvironment()->base();
+
 if (!defined('VELVET_BASE_PATH')) {
-    define('VELVET_BASE_PATH', dirname(__DIR__));
+    define('VELVET_BASE_PATH', $basePath);
 }
 
-$app = new Application(VELVET_BASE_PATH);
-
-// Set global application instance for helpers
-Application::setInstance($app);
+$app = new Application($basePath);
 
 // Generic data store for modules (auto-switches between file and database)
 $app->singleton('data', function () use ($app) {
@@ -49,12 +49,12 @@ $app->singleton(PageIndexer::class, function () {
     return new PageIndexer();
 });
 
-$app->singleton(PageIndex::class, function () {
+$app->singleton(PageIndex::class, function () use ($app) {
     $driver = (string) config('content.drivers.file.index.driver', 'json');
 
     return match ($driver) {
         'sqlite' => new SqlitePageIndex(
-            (string) config('content.drivers.file.index.sqlite.path', storage_path('index/page-index.sqlite')),
+            $app->make(Connection::class),
         ),
         default => new JsonPageIndex(
             (string) config('content.drivers.file.index.json.path', storage_path('index/page-index.json')),
@@ -77,9 +77,11 @@ $app->alias('content.driver', ContentDriver::class);
 $app->singleton('pages', function () use ($app) {
     return new PageService(
         $app->make(ContentDriver::class),
+        $app->make(PageIndex::class),
         $app->make(EventDispatcher::class),
         $app->make(CacheDriver::class),
-        $app->make(\VelvetCMS\Support\Cache\CacheTagManager::class)
+        $app->make(\VelvetCMS\Support\Cache\CacheTagManager::class),
+        $app->make(\VelvetCMS\Core\ConfigRepository::class)
     );
 });
 $app->alias('pages', PageService::class);

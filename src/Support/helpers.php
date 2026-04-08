@@ -2,6 +2,50 @@
 
 declare(strict_types=1);
 
+if (!function_exists('uuid_v7')) {
+    /**
+     * Generate a UUIDv7 (time-ordered, random).
+     *
+     * Format: 8-4-4-4-12 hex string (36 chars).
+     * First 48 bits = Unix timestamp in milliseconds (sortable).
+     * Remaining bits = cryptographically random.
+     */
+    function uuid_v7(): string
+    {
+        $ms = (int) (microtime(true) * 1000);
+        $rand = random_bytes(10);
+
+        // Set version (0111 = 7) in bits 48-51
+        $rand[0] = chr((ord($rand[0]) & 0x0F) | 0x70);
+        // Set variant (10xx) in bits 64-65
+        $rand[2] = chr((ord($rand[2]) & 0x3F) | 0x80);
+
+        $hex = str_pad(dechex($ms), 12, '0', STR_PAD_LEFT) . bin2hex($rand);
+
+        return sprintf(
+            '%s-%s-%s-%s-%s',
+            substr($hex, 0, 8),
+            substr($hex, 8, 4),
+            substr($hex, 12, 4),
+            substr($hex, 16, 4),
+            substr($hex, 20, 12),
+        );
+    }
+}
+
+if (!function_exists('is_uuid')) {
+    /**
+     * Check if a string is a valid UUID (any version).
+     */
+    function is_uuid(string $value): bool
+    {
+        return (bool) preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i',
+            $value
+        );
+    }
+}
+
 if (!function_exists('env')) {
     function env(string $key, mixed $default = null): mixed
     {
@@ -24,18 +68,7 @@ if (!function_exists('env')) {
 if (!function_exists('config')) {
     function config(string|array $key, mixed $default = null): mixed
     {
-        static $repository = null;
-
-        if ($repository === null) {
-            if (\VelvetCMS\Core\Application::hasInstance()) {
-                $app = \VelvetCMS\Core\Application::getInstance();
-                $repository = $app->has('config')
-                    ? $app->make('config')
-                    : \VelvetCMS\Core\ConfigRepository::getInstance();
-            } else {
-                $repository = \VelvetCMS\Core\ConfigRepository::getInstance();
-            }
-        }
+        $repository = app(\VelvetCMS\Core\ConfigRepository::class);
 
         if (is_array($key)) {
             foreach ($key as $innerKey => $value) {
@@ -51,21 +84,21 @@ if (!function_exists('config')) {
 if (!function_exists('tenant')) {
     function tenant(): ?\VelvetCMS\Core\Tenancy\TenantContext
     {
-        return \VelvetCMS\Core\Tenancy\TenancyManager::current();
+        return app(\VelvetCMS\Core\Tenancy\TenancyState::class)->current();
     }
 }
 
 if (!function_exists('tenant_id')) {
     function tenant_id(): ?string
     {
-        return \VelvetCMS\Core\Tenancy\TenancyManager::currentId();
+        return app(\VelvetCMS\Core\Tenancy\TenancyState::class)->currentId();
     }
 }
 
 if (!function_exists('tenant_enabled')) {
     function tenant_enabled(): bool
     {
-        return \VelvetCMS\Core\Tenancy\TenancyManager::isEnabled();
+        return app(\VelvetCMS\Core\Tenancy\TenancyState::class)->isEnabled();
     }
 }
 
@@ -102,30 +135,14 @@ if (!function_exists('tenant_url')) {
 if (!function_exists('tenant_user_path')) {
     function tenant_user_path(string $path = ''): string
     {
-        if (!tenant_enabled() || tenant_id() === null) {
-            $base = base_path('user');
-            return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
-        }
-
-        $config = \VelvetCMS\Core\Tenancy\TenancyManager::config();
-        $root = $config['paths']['user_root'] ?? 'user/tenants';
-        $base = base_path(trim((string) $root, '/')) . DIRECTORY_SEPARATOR . tenant_id();
-        return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        return velvet_paths()->tenantUser($path);
     }
 }
 
 if (!function_exists('tenant_storage_path')) {
     function tenant_storage_path(string $path = ''): string
     {
-        if (!tenant_enabled() || tenant_id() === null) {
-            $base = base_path('storage');
-            return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
-        }
-
-        $config = \VelvetCMS\Core\Tenancy\TenancyManager::config();
-        $root = $config['paths']['storage_root'] ?? 'storage/tenants';
-        $base = base_path(trim((string) $root, '/')) . DIRECTORY_SEPARATOR . tenant_id();
-        return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        return velvet_paths()->tenantStorage($path);
     }
 }
 
@@ -186,8 +203,11 @@ if (!function_exists('db')) {
 if (!function_exists('request')) {
     function request(): \VelvetCMS\Http\Request
     {
-        static $request = null;
-        return $request ??= \VelvetCMS\Http\Request::capture();
+        if (!isset($GLOBALS['__velvet_request']) || !$GLOBALS['__velvet_request'] instanceof \VelvetCMS\Http\Request) {
+            $GLOBALS['__velvet_request'] = \VelvetCMS\Http\Request::capture();
+        }
+
+        return $GLOBALS['__velvet_request'];
     }
 }
 
@@ -198,60 +218,79 @@ if (!function_exists('response')) {
     }
 }
 
+if (!function_exists('velvet_paths')) {
+    function velvet_paths(): \VelvetCMS\Core\Paths
+    {
+        if (\VelvetCMS\Core\Application::hasInstance()) {
+            return \VelvetCMS\Core\Application::getInstance()->make(\VelvetCMS\Core\Paths::class);
+        }
+
+        return \VelvetCMS\Core\Paths::fromBootstrapEnvironment();
+    }
+}
+
 if (!function_exists('base_path')) {
     function base_path(string $path = ''): string
     {
-        static $basePath = null;
-        $basePath ??= dirname(__DIR__, 2);
-
-        return $path ? $basePath . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $basePath;
+        return velvet_paths()->base($path);
     }
 }
 
 if (!function_exists('public_path')) {
     function public_path(string $path = ''): string
     {
-        return base_path('public' . ($path ? DIRECTORY_SEPARATOR . ltrim($path, '/\\') : ''));
+        return velvet_paths()->publicPath($path);
     }
 }
 
 if (!function_exists('storage_path')) {
     function storage_path(string $path = ''): string
     {
-        $base = tenant_storage_path();
-        return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        return velvet_paths()->storage($path);
     }
 }
 
 if (!function_exists('content_path')) {
     function content_path(string $path = ''): string
     {
-        $base = tenant_user_path('content');
-        return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        return velvet_paths()->content($path);
     }
 }
 
 if (!function_exists('view_path')) {
     function view_path(string $path = ''): string
     {
-        $viewPath = (string) config('view.path', 'user/views');
-        $viewPath = trim($viewPath, '/');
-
-        if (tenant_enabled() && tenant_id() !== null && str_starts_with($viewPath, 'user/')) {
-            $subPath = substr($viewPath, strlen('user/'));
-            $base = tenant_user_path($subPath);
-            return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        $viewPath = config('view.path', 'user/views');
+        if (!is_string($viewPath) || trim($viewPath) === '') {
+            $viewPath = 'user/views';
         }
 
-        $base = base_path($viewPath);
-        return $path ? $base . DIRECTORY_SEPARATOR . ltrim($path, '/\\') : $base;
+        $paths = velvet_paths();
+
+        if (\VelvetCMS\Core\Paths::isAbsolute($viewPath)) {
+            return \VelvetCMS\Core\Paths::join(rtrim($viewPath, '/\\'), $path);
+        }
+
+        $normalized = trim($viewPath, '/\\');
+
+        if (tenant_enabled() && tenant_id() !== null) {
+            if ($normalized === 'user') {
+                return \VelvetCMS\Core\Paths::join($paths->tenantUser(), $path);
+            }
+
+            if (str_starts_with($normalized, 'user/')) {
+                return \VelvetCMS\Core\Paths::join($paths->tenantUser(substr($normalized, strlen('user/'))), $path);
+            }
+        }
+
+        return \VelvetCMS\Core\Paths::join($paths->base($normalized), $path);
     }
 }
 
 if (!function_exists('config_path')) {
     function config_path(string $path = ''): string
     {
-        return base_path('config' . ($path ? DIRECTORY_SEPARATOR . ltrim($path, '/\\') : ''));
+        return velvet_paths()->config($path);
     }
 }
 

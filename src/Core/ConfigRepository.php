@@ -4,15 +4,14 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core;
 
+use Closure;
 use RuntimeException;
 
 class ConfigRepository
 {
-    private static ?self $instance = null;
-
     private readonly string $configPath;
     private readonly string $userConfigPath;
-    private readonly ?string $tenantConfigPath;
+    private readonly string|Closure|null $tenantConfigPath;
 
     /** @var array<string, mixed> */
     private array $items = [];
@@ -27,17 +26,21 @@ class ConfigRepository
 
     private ?string $cacheFile;
 
-    public function __construct(string $configPath, ?string $cacheFile = null, ?string $userConfigPath = null, ?string $tenantConfigPath = null)
-    {
+    public function __construct(
+        string $configPath,
+        ?string $cacheFile = null,
+        ?string $userConfigPath = null,
+        string|Closure|null $tenantConfigPath = null,
+    ) {
         $this->configPath = rtrim($configPath, DIRECTORY_SEPARATOR);
         $this->cacheFile = $cacheFile;
         $this->userConfigPath = rtrim(
             $userConfigPath ?? (dirname($this->configPath) . DIRECTORY_SEPARATOR . 'user' . DIRECTORY_SEPARATOR . 'config'),
             DIRECTORY_SEPARATOR
         );
-        $this->tenantConfigPath = $tenantConfigPath !== null
+        $this->tenantConfigPath = is_string($tenantConfigPath)
             ? rtrim($tenantConfigPath, DIRECTORY_SEPARATOR)
-            : null;
+            : $tenantConfigPath;
 
         if ($cacheFile && file_exists($cacheFile)) {
             $cached = require $cacheFile;
@@ -49,30 +52,6 @@ class ConfigRepository
                 $this->loadedFromCache = true;
             }
         }
-    }
-
-    public static function getInstance(): self
-    {
-        if (self::$instance === null) {
-            $configPath = config_path();
-            $cacheFile = storage_path('cache/config.php');
-            $tenantId = \VelvetCMS\Core\Tenancy\TenancyManager::currentId();
-            $tenantConfigPath = null;
-            if ($tenantId !== null) {
-                $tenancyConfig = \VelvetCMS\Core\Tenancy\TenancyManager::config();
-                $userRoot = $tenancyConfig['paths']['user_root'] ?? 'user/tenants';
-                $tenantConfigPath = base_path(trim((string) $userRoot, '/')) . DIRECTORY_SEPARATOR . $tenantId . DIRECTORY_SEPARATOR . 'config';
-            }
-
-            self::$instance = new self($configPath, $cacheFile, null, $tenantConfigPath);
-        }
-
-        return self::$instance;
-    }
-
-    public static function setInstance(self $repository): void
-    {
-        self::$instance = $repository;
     }
 
     public function registerNamespace(string $namespace, string $configPath): void
@@ -209,8 +188,9 @@ PHP;
             }
         }
 
-        if ($this->tenantConfigPath !== null) {
-            $tenantConfigFile = $this->tenantConfigPath . DIRECTORY_SEPARATOR . $name . '.php';
+        $tenantConfigPath = $this->resolveTenantConfigPath();
+        if ($tenantConfigPath !== null) {
+            $tenantConfigFile = $tenantConfigPath . DIRECTORY_SEPARATOR . $name . '.php';
             if (file_exists($tenantConfigFile)) {
                 $tenantConfig = require $tenantConfigFile;
                 if (is_array($tenantConfig)) {
@@ -252,8 +232,9 @@ PHP;
             }
         }
 
-        if ($this->tenantConfigPath !== null) {
-            $tenantFile = $this->tenantConfigPath . DIRECTORY_SEPARATOR . $namespace . DIRECTORY_SEPARATOR . $file . '.php';
+        $tenantConfigPath = $this->resolveTenantConfigPath();
+        if ($tenantConfigPath !== null) {
+            $tenantFile = $tenantConfigPath . DIRECTORY_SEPARATOR . $namespace . DIRECTORY_SEPARATOR . $file . '.php';
             if (file_exists($tenantFile)) {
                 $tenantConfig = require $tenantFile;
                 if (is_array($tenantConfig)) {
@@ -406,5 +387,20 @@ PHP;
                 $current = &$current[$key];
             }
         }
+    }
+
+    private function resolveTenantConfigPath(): ?string
+    {
+        if ($this->tenantConfigPath instanceof Closure) {
+            $resolved = ($this->tenantConfigPath)();
+
+            return is_string($resolved) && $resolved !== ''
+                ? rtrim($resolved, DIRECTORY_SEPARATOR)
+                : null;
+        }
+
+        return is_string($this->tenantConfigPath) && $this->tenantConfigPath !== ''
+            ? rtrim($this->tenantConfigPath, DIRECTORY_SEPARATOR)
+            : null;
     }
 }

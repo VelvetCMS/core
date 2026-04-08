@@ -5,18 +5,16 @@ declare(strict_types=1);
 require_once __DIR__ . '/../vendor/autoload.php';
 
 use VelvetCMS\Exceptions\Handler;
-use VelvetCMS\Exceptions\NotFoundException;
 use VelvetCMS\Http\AssetServer;
 use VelvetCMS\Http\Request;
-use VelvetCMS\Http\Response;
 
 $request = Request::capture();
-\VelvetCMS\Core\Tenancy\TenancyManager::bootstrapFromRequest($request);
 
 $app = require __DIR__ . '/../bootstrap/app.php';
+$app->make(\VelvetCMS\Core\Tenancy\TenancyManager::class)->bootstrapFromRequest($request);
 $app->boot();
 
-$response = AssetServer::serve($request);
+$response = $app->make(AssetServer::class)->serve($request);
 if ($response !== null) {
     $response->send();
     exit;
@@ -25,12 +23,15 @@ if ($response !== null) {
 $router = $app->make('router');
 
 $routeCacheFile = storage_path('cache/routes.php');
-if (file_exists($routeCacheFile)) {
-    $cachedRoutes = require $routeCacheFile;
-    if (is_array($cachedRoutes)) {
-        $router->loadCachedRoutes($cachedRoutes);
-    }
+$cachedRoutes = file_exists($routeCacheFile) ? require $routeCacheFile : null;
+
+if (is_array($cachedRoutes)) {
+    $router->loadCachedRoutes($cachedRoutes);
 } else {
+    if ($app->has('modules')) {
+        $app->make('modules')->loadRoutes();
+    }
+
     $app->registerDefaultRoutes($router);
 }
 
