@@ -4,16 +4,25 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core\Tenancy;
 
+use VelvetCMS\Core\Paths;
+
 final class TenantDiscovery
 {
+    public function __construct(
+        private readonly Paths $paths,
+        private readonly TenancyState $state,
+    ) {
+    }
+
     /**
      * @return array<int, string>
      */
-    public static function discoverTenantIds(): array
+    public function discoverTenantIds(): array
     {
-        $config = TenancyManager::config();
-        $userRoot = $config['paths']['user_root'] ?? 'user/tenants';
-        $root = base_path(trim((string) $userRoot, '/'));
+        $userRoot = (string) ($this->state->config()['paths']['user_root'] ?? 'user/tenants');
+        $root = Paths::isAbsolute($userRoot)
+            ? rtrim($userRoot, '/\\')
+            : $this->paths->base(trim($userRoot, '/\\'));
 
         if (!is_dir($root)) {
             return [];

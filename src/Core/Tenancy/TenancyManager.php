@@ -9,22 +9,25 @@ use VelvetCMS\Http\Request;
 
 final class TenancyManager
 {
-    private static ?TenantContext $current = null;
-    private static ?array $config = null;
+    public function __construct(
+        private readonly TenancyState $state,
+    ) {
+    }
 
-    public static function bootstrapFromRequest(Request $request): ?TenantContext
+    public function bootstrapFromRequest(Request $request): ?TenantContext
     {
-        $config = self::config();
+        $config = $this->config();
         if (!(bool) ($config['enabled'] ?? false)) {
+            $this->state->setCurrent(null);
             return null;
         }
 
-        $context = self::resolveFromRequest($request, $config);
+        $context = $this->resolveFromRequest($request, $config);
         if ($context === null) {
-            $context = new TenantContext(self::defaultId($config));
+            $context = new TenantContext($this->defaultId($config));
         }
 
-        self::setCurrent($context);
+        $this->setCurrent($context);
 
         if ($context->pathPrefix() !== null) {
             $request->setPathPrefix($context->pathPrefix());
@@ -33,85 +36,83 @@ final class TenancyManager
         return $context;
     }
 
-    public static function bootstrapFromCli(): ?TenantContext
+    public function bootstrapFromCli(): ?TenantContext
     {
-        $config = self::config();
+        $config = $this->config();
         if (!(bool) ($config['enabled'] ?? false)) {
+            $this->state->setCurrent(null);
             return null;
         }
 
         $tenantId = env('TENANCY_TENANT', null);
         if (!is_string($tenantId) || $tenantId === '') {
-            $tenantId = self::defaultId($config);
+            $tenantId = $this->defaultId($config);
         }
 
         $context = new TenantContext($tenantId);
-        self::setCurrent($context);
+        $this->setCurrent($context);
         return $context;
     }
 
-    public static function setCurrent(TenantContext $context): void
+    public function setCurrent(?TenantContext $context): void
     {
-        self::$current = $context;
+        $this->state->setCurrent($context);
     }
 
-    public static function current(): ?TenantContext
+    /** @param array<string, mixed> $config */
+    public function setConfig(array $config): void
     {
-        return self::$current;
+        $this->state->setConfig($config);
     }
 
-    public static function currentId(): ?string
+    public function current(): ?TenantContext
     {
-        return self::$current?->id();
+        return $this->state->current();
     }
 
-    public static function isEnabled(): bool
+    public function currentId(): ?string
     {
-        $config = self::config();
-        return (bool) ($config['enabled'] ?? false);
+        return $this->state->currentId();
     }
 
-    public static function config(): array
+    public function isEnabled(): bool
     {
-        if (self::$config !== null) {
-            return self::$config;
-        }
-
-        $configFile = config_path('tenancy.php');
-        if (!file_exists($configFile)) {
-            self::$config = [];
-            return self::$config;
-        }
-
-        $config = require $configFile;
-        self::$config = is_array($config) ? $config : [];
-
-        return self::$config;
+        return $this->state->isEnabled();
     }
 
-    public static function defaultId(?array $config = null): string
+    /** @return array<string, mixed> */
+    public function config(): array
     {
-        $config ??= self::config();
+        return $this->state->config();
+    }
+
+    /** @param array<string, mixed>|null $config */
+    public function defaultId(?array $config = null): string
+    {
+        $config ??= $this->config();
         $default = $config['default'] ?? 'default';
+
         return is_string($default) && $default !== '' ? $default : 'default';
     }
 
-    private static function resolveFromRequest(Request $request, array $config): ?TenantContext
+    /** @param array<string, mixed> $config */
+    private function resolveFromRequest(Request $request, array $config): ?TenantContext
     {
         $resolver = $config['resolver'] ?? 'host';
 
         if ($resolver === 'callback') {
-            return self::resolveFromCallback($request, $config);
+            return $this->resolveFromCallback($request, $config);
         }
 
         if ($resolver === 'path') {
-            return self::resolveFromPath($request, $config);
+            return $this->resolveFromPath($request, $config);
         }
 
-        return self::resolveFromHost($request, $config);
+        return $this->resolveFromHost($request, $config);
     }
 
-    private static function resolveFromCallback(Request $request, array $config): ?TenantContext
+    /** @param array<string, mixed> $config */
+    private function resolveFromCallback(Request $request, array $config): ?TenantContext
     {
         $resolverClass = $config['callback'] ?? null;
         if (!is_string($resolverClass) || $resolverClass === '' || !class_exists($resolverClass)) {
@@ -126,7 +127,8 @@ final class TenancyManager
         return $resolver->resolve($request, $config);
     }
 
-    private static function resolveFromHost(Request $request, array $config): ?TenantContext
+    /** @param array<string, mixed> $config */
+    private function resolveFromHost(Request $request, array $config): ?TenantContext
     {
         $hostConfig = $config['host'] ?? [];
         $host = strtolower($request->host());
@@ -164,7 +166,8 @@ final class TenancyManager
         return null;
     }
 
-    private static function resolveFromPath(Request $request, array $config): ?TenantContext
+    /** @param array<string, mixed> $config */
+    private function resolveFromPath(Request $request, array $config): ?TenantContext
     {
         $pathConfig = $config['path'] ?? [];
         $segmentIndex = (int) ($pathConfig['segment'] ?? 1);

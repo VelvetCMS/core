@@ -4,101 +4,112 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core\Tenancy;
 
+use VelvetCMS\Core\Paths;
+
 final class ModuleArtifactPaths
 {
-    public static function statePath(?string $tenantId = null, ?string $basePath = null): string
-    {
-        return self::storageRoot($tenantId, $basePath) . '/modules.json';
+    public function __construct(
+        private readonly Paths $paths,
+        private readonly TenancyState $state,
+    ) {
     }
 
-    public static function compiledPath(?string $tenantId = null, ?string $basePath = null): string
+    public function statePath(?string $tenantId = null, ?string $basePath = null): string
     {
-        return self::storageRoot($tenantId, $basePath) . '/modules-compiled.json';
+        return $this->storageRoot($tenantId, $basePath) . '/modules.json';
     }
 
-    public static function autoloadPath(?string $tenantId = null, ?string $basePath = null): string
+    public function compiledPath(?string $tenantId = null, ?string $basePath = null): string
     {
-        return self::storageRoot($tenantId, $basePath) . '/modules-autoload.php';
+        return $this->storageRoot($tenantId, $basePath) . '/modules-compiled.json';
     }
 
-    /**
-     * @return array<int, string>
-     */
-    public static function compiledCandidates(?string $basePath = null): array
+    public function autoloadPath(?string $tenantId = null, ?string $basePath = null): string
     {
-        return self::tenantFirstCandidates('modules-compiled.json', $basePath);
-    }
-
-    /**
-     * @return array<int, string>
-     */
-    public static function stateCandidates(?string $basePath = null): array
-    {
-        return self::tenantFirstCandidates('modules.json', $basePath);
+        return $this->storageRoot($tenantId, $basePath) . '/modules-autoload.php';
     }
 
     /**
      * @return array<int, string>
      */
-    public static function autoloadCandidates(?string $basePath = null): array
+    public function compiledCandidates(?string $basePath = null): array
     {
-        return self::tenantFirstCandidates('modules-autoload.php', $basePath);
+        return $this->tenantFirstCandidates('modules-compiled.json', $basePath);
     }
 
-    public static function globalStatePath(?string $basePath = null): string
+    /**
+     * @return array<int, string>
+     */
+    public function stateCandidates(?string $basePath = null): array
     {
-        return self::basePath($basePath) . '/storage/modules.json';
+        return $this->tenantFirstCandidates('modules.json', $basePath);
     }
 
-    public static function globalCompiledPath(?string $basePath = null): string
+    /**
+     * @return array<int, string>
+     */
+    public function autoloadCandidates(?string $basePath = null): array
     {
-        return self::basePath($basePath) . '/storage/modules-compiled.json';
+        return $this->tenantFirstCandidates('modules-autoload.php', $basePath);
     }
 
-    public static function globalAutoloadPath(?string $basePath = null): string
+    public function globalStatePath(?string $basePath = null): string
     {
-        return self::basePath($basePath) . '/storage/modules-autoload.php';
+        return $this->basePath($basePath) . '/storage/modules.json';
     }
 
-    private static function storageRoot(?string $tenantId = null, ?string $basePath = null): string
+    public function globalCompiledPath(?string $basePath = null): string
+    {
+        return $this->basePath($basePath) . '/storage/modules-compiled.json';
+    }
+
+    public function globalAutoloadPath(?string $basePath = null): string
+    {
+        return $this->basePath($basePath) . '/storage/modules-autoload.php';
+    }
+
+    private function storageRoot(?string $tenantId = null, ?string $basePath = null): string
     {
         if ($tenantId !== null && $tenantId !== '') {
-            return self::tenantStorageRoot($tenantId, $basePath) . '/modules';
+            return $this->tenantStorageRoot($tenantId, $basePath) . '/modules';
         }
 
-        if (tenant_enabled() && tenant_id() !== null) {
-            return self::tenantStorageRoot((string) tenant_id(), $basePath) . '/modules';
+        if ($this->state->isEnabled() && $this->state->currentId() !== null) {
+            return $this->tenantStorageRoot((string) $this->state->currentId(), $basePath) . '/modules';
         }
 
-        return self::basePath($basePath) . '/storage';
+        return $this->basePath($basePath) . '/storage';
     }
 
     /**
      * @return array<int, string>
      */
-    private static function tenantFirstCandidates(string $filename, ?string $basePath = null): array
+    private function tenantFirstCandidates(string $filename, ?string $basePath = null): array
     {
         $paths = [];
 
-        if (tenant_enabled() && tenant_id() !== null) {
-            $paths[] = self::tenantStorageRoot((string) tenant_id(), $basePath) . '/modules/' . $filename;
+        if ($this->state->isEnabled() && $this->state->currentId() !== null) {
+            $paths[] = $this->tenantStorageRoot((string) $this->state->currentId(), $basePath) . '/modules/' . $filename;
         }
 
-        $paths[] = self::basePath($basePath) . '/storage/' . $filename;
+        $paths[] = $this->basePath($basePath) . '/storage/' . $filename;
 
         return array_values(array_unique($paths));
     }
 
-    private static function tenantStorageRoot(string $tenantId, ?string $basePath = null): string
+    private function tenantStorageRoot(string $tenantId, ?string $basePath = null): string
     {
-        $config = TenancyManager::config();
-        $root = $config['paths']['storage_root'] ?? 'storage/tenants';
+        $root = (string) ($this->state->config()['paths']['storage_root'] ?? 'storage/tenants');
 
-        return self::basePath($basePath) . DIRECTORY_SEPARATOR . trim((string) $root, '/') . DIRECTORY_SEPARATOR . $tenantId;
+        if (Paths::isAbsolute($root)) {
+            return rtrim($root, '/\\') . DIRECTORY_SEPARATOR . $tenantId;
+        }
+
+        return $this->basePath($basePath) . DIRECTORY_SEPARATOR . trim($root, '/\\') . DIRECTORY_SEPARATOR . $tenantId;
     }
 
-    private static function basePath(?string $basePath = null): string
+    private function basePath(?string $basePath = null): string
     {
-        return $basePath !== null && $basePath !== '' ? rtrim($basePath, '/\\') : base_path();
+        return $basePath !== null && $basePath !== '' ? rtrim($basePath, '/\\') : $this->paths->base();
     }
 }

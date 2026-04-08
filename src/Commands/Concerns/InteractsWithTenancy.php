@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Commands\Concerns;
 
 use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
+use VelvetCMS\Core\Tenancy\TenancyState;
 use VelvetCMS\Core\Tenancy\TenantDiscovery;
 
 trait InteractsWithTenancy
@@ -14,7 +15,9 @@ trait InteractsWithTenancy
      */
     protected function resolveTenantSelection(bool $allowAllTenants = true, bool $fallbackToCurrentTenant = true): array
     {
-        if (!tenant_enabled()) {
+        $tenancyState = app(TenancyState::class);
+
+        if (!$tenancyState->isEnabled()) {
             throw new \RuntimeException('Tenancy must be enabled.');
         }
 
@@ -34,11 +37,11 @@ trait InteractsWithTenancy
                 throw new \RuntimeException('--all-tenants is not supported by this command.');
             }
 
-            return TenantDiscovery::discoverTenantIds();
+            return app(TenantDiscovery::class)->discoverTenantIds();
         }
 
-        if ($fallbackToCurrentTenant && tenant_id() !== null) {
-            return [(string) tenant_id()];
+        if ($fallbackToCurrentTenant && $tenancyState->currentId() !== null) {
+            return [(string) $tenancyState->currentId()];
         }
 
         return [];
@@ -59,12 +62,14 @@ trait InteractsWithTenancy
 
     protected function resolveStatePathForRead(string $basePath): string
     {
-        foreach (ModuleArtifactPaths::stateCandidates($basePath) as $candidate) {
+        $artifactPaths = app(ModuleArtifactPaths::class);
+
+        foreach ($artifactPaths->stateCandidates($basePath) as $candidate) {
             if (file_exists($candidate)) {
                 return $candidate;
             }
         }
 
-        return ModuleArtifactPaths::statePath(basePath: $basePath);
+        return $artifactPaths->statePath(basePath: $basePath);
     }
 }
