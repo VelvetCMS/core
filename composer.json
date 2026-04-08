@@ -5,7 +5,6 @@
   "license": "Apache-2.0",
   "require": {
     "php": "^8.4",
-    "symfony/console": "^8.0",
     "symfony/yaml": "^8.0",
     "composer/semver": "^3.4",
     "psr/log": "^3.0"
@@ -34,7 +33,11 @@
     }
   },
   "scripts": {
-    "test": "phpunit",
+    "test": "phpunit --exclude-group external",
+    "test:all": "phpunit",
+    "test:unit": "phpunit --testsuite Unit",
+    "test:integration": "phpunit --testsuite Integration",
+    "test:external": "phpunit --testsuite External",
     "cs:check": "php-cs-fixer fix --dry-run --diff",
     "cs:fix": "php-cs-fixer fix",
     "analyse": "phpstan analyse --memory-limit=512M",
