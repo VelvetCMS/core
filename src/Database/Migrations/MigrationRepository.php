@@ -13,7 +13,8 @@ class MigrationRepository
     private string $table = 'migrations';
 
     public function __construct(
-        private readonly Connection $connection
+        private readonly Connection $connection,
+        private readonly Schema $schema,
     ) {
     }
 
@@ -65,7 +66,7 @@ class MigrationRepository
 
     public function createRepository(): void
     {
-        Schema::create($this->table, function (Blueprint $table) {
+        $this->schema->create($this->table, function (Blueprint $table) {
             $table->id();
             $table->string('migration');
             $table->integer('batch');

@@ -72,6 +72,15 @@ abstract class Grammar
         return $sql;
     }
 
+    protected function modifyNullable(Blueprint $blueprint, array $column): string
+    {
+        if ($column['autoIncrement'] ?? false) {
+            return '';
+        }
+
+        return ($column['nullable'] ?? false) ? '' : ' NOT NULL';
+    }
+
     protected function modifyDefault(Blueprint $blueprint, array $column): string
     {
         if (!empty($column['useCurrent'])) {

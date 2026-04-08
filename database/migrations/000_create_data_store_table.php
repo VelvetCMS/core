@@ -4,9 +4,9 @@ use VelvetCMS\Database\Schema\Blueprint;
 use VelvetCMS\Database\Schema\Schema;
 
 return new class {
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        Schema::create('data_store', function (Blueprint $table) {
+        $schema->create('data_store', function (Blueprint $table) {
             $table->id();
             $table->string('collection', 100);
             $table->string('key', 255);
@@ -18,8 +18,8 @@ return new class {
         });
     }
 
-    public function down(): void
+    public function down(Schema $schema): void
     {
-        Schema::dropIfExists('data_store');
+        $schema->dropIfExists('data_store');
     }
 };

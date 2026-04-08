@@ -12,55 +12,50 @@ use VelvetCMS\Database\Schema\Grammars\SQLiteGrammar;
 
 class Schema
 {
-    private static ?Connection $connection = null;
-    private static ?Grammar $grammar = null;
+    private readonly Grammar $grammar;
 
-    public static function setConnection(Connection $connection): void
-    {
-        self::$connection = $connection;
-        self::$grammar = self::getGrammar($connection);
+    public function __construct(
+        private readonly Connection $connection
+    ) {
+        $this->grammar = self::resolveGrammar($connection);
     }
 
-    public static function create(string $table, callable $callback): void
+    public function create(string $table, callable $callback): void
     {
         $blueprint = new Blueprint($table);
         $blueprint->create();
         $callback($blueprint);
 
-        self::execute($blueprint);
+        $this->execute($blueprint);
     }
 
-    public static function drop(string $table): void
+    public function drop(string $table): void
     {
         $blueprint = new Blueprint($table);
         $blueprint->drop();
 
-        self::execute($blueprint);
+        $this->execute($blueprint);
     }
 
-    public static function dropIfExists(string $table): void
+    public function dropIfExists(string $table): void
     {
-        if (self::$connection->tableExists($table)) {
-            self::drop($table);
+        if ($this->connection->tableExists($table)) {
+            $this->drop($table);
         }
     }
 
-    private static function execute(Blueprint $blueprint): void
+    private function execute(Blueprint $blueprint): void
     {
-        if (self::$connection === null) {
-            throw new \RuntimeException('Schema connection not set.');
-        }
-
-        $statements = self::$grammar->compile($blueprint);
+        $statements = $this->grammar->compile($blueprint);
 
         foreach ($statements as $statement) {
-            self::$connection->statement($statement);
+            $this->connection->statement($statement);
         }
     }
 
-    private static function getGrammar(Connection $connection): Grammar
+    private static function resolveGrammar(Connection $connection): Grammar
     {
-        $driver = $connection->getPdo()->getAttribute(\PDO::ATTR_DRIVER_NAME);
+        $driver = $connection->getDriver();
 
         return match ($driver) {
             'mysql' => new MySqlGrammar(),

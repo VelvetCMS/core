@@ -11,9 +11,9 @@ class Migrator
 {
     public function __construct(
         private readonly Connection $connection,
+        private readonly Schema $schema,
         private readonly MigrationRepository $repository
     ) {
-        Schema::setConnection($connection);
     }
 
     public function run(string $path): void
@@ -60,7 +60,7 @@ class Migrator
         $migration = require $file;
 
         if (method_exists($migration, 'up')) {
-            $migration->up();
+            $migration->up($this->schema);
         }
     }
 
