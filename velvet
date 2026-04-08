@@ -55,16 +55,12 @@ if (is_string($tenantOverride) && $tenantOverride !== '') {
     putenv('TENANCY_TENANT=' . $tenantOverride);
 }
 
-\VelvetCMS\Core\Tenancy\TenancyManager::bootstrapFromCli();
-
 // Bootstrap application
 $app = null;
 try {
     $app = require __DIR__ . '/bootstrap/app.php';
-
+    $app->make(\VelvetCMS\Core\Tenancy\TenancyManager::class)->bootstrapFromCli();
     $app->boot();
-
-    // Application instance is already set in bootstrap/app.php via App::setInstance()
 } catch (\Throwable $e) {
     // If bootstrap fails, we might be in a fresh install
     // Create minimal bootstrap for installation commands
@@ -107,7 +103,7 @@ if ($app) {
 
     try {
         $app->instance(CommandRegistry::class, $registry);
-        $app->alias('commands', CommandRegistry::class);
+        $app->alias(CommandRegistry::class, 'commands');
 
         $events = $app->make('events');
         $events->dispatch('commands.registering', $registry);
@@ -171,7 +167,15 @@ $registry->register('help', HelpCommand::class);
 [$commandName, $arguments, $options] = $registry->parseArgv($argv);
 
 if (!$commandName) {
-    $versionRegistry = \VelvetCMS\Core\VersionRegistry::instance();
+    $versionRegistry = $app !== null
+        ? $app->make(\VelvetCMS\Core\VersionRegistry::class)
+        : null;
+
+    if ($versionRegistry === null) {
+        fwrite(STDERR, "Error: application services are unavailable.\n");
+        exit(1);
+    }
+
     $coreVersion = $versionRegistry->getVersion('core');
 
     echo "\033[1mVelvetCMS Core\033[0m \033[33m{$coreVersion}\033[0m\n";

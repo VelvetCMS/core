@@ -30,6 +30,7 @@ class ProvisionModuleCommand extends Command
     public function handle(): int
     {
         $dryRun = (bool) $this->option('dry-run', false);
+        $artifactPaths = app(ModuleArtifactPaths::class);
 
         try {
             $tenants = $this->resolveTenantSelection(allowAllTenants: true, fallbackToCurrentTenant: true);
@@ -45,9 +46,9 @@ class ProvisionModuleCommand extends Command
 
         $this->info('Migrating module artifacts to tenant scope...');
 
-        $globalState = ModuleArtifactPaths::globalStatePath();
-        $globalCompiled = ModuleArtifactPaths::globalCompiledPath();
-        $globalAutoload = ModuleArtifactPaths::globalAutoloadPath();
+        $globalState = $artifactPaths->globalStatePath();
+        $globalCompiled = $artifactPaths->globalCompiledPath();
+        $globalAutoload = $artifactPaths->globalAutoloadPath();
 
         if (!file_exists($globalState) && !file_exists($globalCompiled) && !file_exists($globalAutoload)) {
             $this->warning('No global module artifacts found to migrate.');
@@ -58,9 +59,9 @@ class ProvisionModuleCommand extends Command
             $this->line();
             $this->line("\033[1m[tenant: {$tenantId}]\033[0m");
 
-            $tenantState = ModuleArtifactPaths::statePath($tenantId);
-            $tenantCompiled = ModuleArtifactPaths::compiledPath($tenantId);
-            $tenantAutoload = ModuleArtifactPaths::autoloadPath($tenantId);
+            $tenantState = $artifactPaths->statePath($tenantId);
+            $tenantCompiled = $artifactPaths->compiledPath($tenantId);
+            $tenantAutoload = $artifactPaths->autoloadPath($tenantId);
 
             $this->ensureDir(dirname($tenantState), $dryRun);
 

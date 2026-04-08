@@ -33,6 +33,11 @@ class MakeModuleCommand extends GeneratorCommand
         $moduleName = $name;
         $className = $this->formatClassName($name);
         $slug = strtolower(preg_replace('/(?<!^)[A-Z]/', '-$0', $moduleName));
+        $composerAutoload = [
+            'psr-4' => [
+                "{$className}\\" => 'src/',
+            ],
+        ];
 
         $basePath = base_path("user/modules/{$moduleName}");
 
@@ -55,14 +60,14 @@ class MakeModuleCommand extends GeneratorCommand
             'entry' => "{$className}\\Module",
             'description' => "The {$moduleName} module.",
             'requires' => [
-                'core' => '>=2.0.0',
+                'core' => '>=2.2.0',
             ],
             'commands' => new \stdClass(),
-            'autoload' => [
-                'psr-4' => [
-                    "{$className}\\" => 'src/',
-                ],
+            'routes' => [
+                'web' => 'routes/web.php',
+                'api' => 'routes/api.php',
             ],
+            'views' => 'resources/views',
         ];
 
         file_put_contents(
@@ -90,6 +95,21 @@ PHP;
 
         file_put_contents("{$basePath}/src/Module.php", $content);
 
+        $routeStub = <<<'PHP'
+    <?php
+
+    declare(strict_types=1);
+
+    use VelvetCMS\Core\Application;
+    use VelvetCMS\Http\Routing\Router;
+
+    return static function (Router $router, Application $app): void {
+    };
+    PHP;
+
+        file_put_contents("{$basePath}/routes/web.php", $routeStub);
+        file_put_contents("{$basePath}/routes/api.php", $routeStub);
+
         $configStub = <<<'PHP'
 <?php
 
@@ -103,7 +123,7 @@ PHP;
             'name' => 'velvet-modules/' . strtolower($moduleName),
             'description' => $manifest['description'],
             'type' => 'velvetcms-module',
-            'autoload' => $manifest['autoload'],
+            'autoload' => $composerAutoload,
         ];
 
         file_put_contents(

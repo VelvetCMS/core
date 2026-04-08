@@ -36,6 +36,7 @@ class DisableModuleCommand extends Command
     public function handle(): int
     {
         $moduleName = $this->argument(0);
+        $artifactPaths = $this->app->make(ModuleArtifactPaths::class);
 
         if (!$moduleName) {
             $this->error('Module name is required');
@@ -47,7 +48,7 @@ class DisableModuleCommand extends Command
             return $this->handleAllTenants($moduleName);
         }
 
-        $statePath = ModuleArtifactPaths::statePath(basePath: $this->app->basePath());
+        $statePath = $artifactPaths->statePath(basePath: $this->app->basePath());
         $stateDir = dirname($statePath);
         if (!is_dir($stateDir)) {
             mkdir($stateDir, 0755, true);

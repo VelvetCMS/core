@@ -33,7 +33,7 @@ class ListCommand extends Command
             return 1;
         }
 
-        $registry = \VelvetCMS\Core\VersionRegistry::instance();
+        $registry = app(\VelvetCMS\Core\VersionRegistry::class);
         $coreVersion = $registry->getVersion('core');
 
         $this->line();

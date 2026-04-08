@@ -11,6 +11,8 @@ use VelvetCMS\Database\Schema\Schema;
 
 class InstallCommand extends Command
 {
+    private const MARKDOWN_PARSERS = ['commonmark', 'parsedown', 'html'];
+
     private bool $interactive = true;
     private array $config = [];
 
@@ -21,7 +23,7 @@ class InstallCommand extends Command
 
     public function signature(): string
     {
-        return 'install [--defaults] [--force] [--no-migrate] [--no-sample]';
+        return 'install [--defaults] [--force] [--no-migrate] [--no-sample] [--parser=]';
     }
 
     public function description(): string
@@ -39,6 +41,10 @@ class InstallCommand extends Command
         if ($this->option('defaults')) {
             $this->info('Running with --defaults (non-interactive mode)');
             $this->line('');
+        }
+
+        if (!$this->validateRequestedParserOption()) {
+            return self::FAILURE;
         }
 
         if (!$force && $this->isInstalled()) {
@@ -66,7 +72,9 @@ class InstallCommand extends Command
         $this->configureCacheDriver();
 
         $this->step(5, 5, 'Additional options');
-        $this->configureAdditionalOptions();
+        if (!$this->configureAdditionalOptions()) {
+            return self::FAILURE;
+        }
 
         if (!$this->option('no-sample')) {
             $this->configureSampleContent();
@@ -230,10 +238,10 @@ class InstallCommand extends Command
         }
 
         try {
-            Schema::setConnection($connection);
+            $schema = new Schema($connection);
 
-            $repository = new MigrationRepository($connection);
-            $migrator = new Migrator($connection, $repository);
+            $repository = new MigrationRepository($connection, $schema);
+            $migrator = new Migrator($connection, $schema, $repository);
 
             $path = base_path('database/migrations');
             if (is_dir($path)) {
@@ -276,45 +284,188 @@ class InstallCommand extends Command
         $this->success("  Cache driver: {$driver}");
     }
 
-    private function configureAdditionalOptions(): void
+    private function configureAdditionalOptions(): bool
     {
-        $this->configureMarkdownParser();
+        if (!$this->configureMarkdownParser()) {
+            return false;
+        }
+
         $this->configureMultiTenancy();
+
+        return true;
     }
 
-    private function configureMarkdownParser(): void
+    private function configureMarkdownParser(): bool
     {
-        $drivers = ['commonmark', 'parsedown', 'html'];
+        $availability = self::markdownParserAvailability();
+        $default = self::defaultMarkdownParser($availability);
+        $requestedDriver = $this->option('parser');
+        $hasExplicitSelection = is_string($requestedDriver) && trim($requestedDriver) !== '';
 
-        $hasCommonmark = class_exists(\League\CommonMark\MarkdownConverter::class);
-        $hasParsedown = class_exists('Parsedown');
-
-        $default = $hasCommonmark ? 'commonmark' : ($hasParsedown ? 'parsedown' : 'html');
-
-        if ($this->interactive) {
+        if ($hasExplicitSelection) {
+            $driver = self::normalizeMarkdownParser($requestedDriver);
+        } elseif ($this->interactive) {
             $this->line('  Markdown parser:');
-            $cm = $hasCommonmark ? '' : " \033[33m(not installed)\033[0m";
-            $pd = $hasParsedown ? '' : " \033[33m(not installed)\033[0m";
+            $cm = $availability['commonmark'] ? '' : " \033[33m(not installed)\033[0m";
+            $pd = $availability['parsedown'] ? '' : " \033[33m(not installed)\033[0m";
             $this->line("    [1] commonmark - Full-featured{$cm}");
             $this->line("    [2] parsedown  - Fast & simple{$pd}");
             $this->line('    [3] html       - No parsing (raw HTML only)');
 
-            $defaultIndex = array_search($default, $drivers) + 1;
+            $defaultIndex = array_search($default, self::MARKDOWN_PARSERS, true) + 1;
             $choice = (int) $this->ask('  Select parser', (string) $defaultIndex);
-            $driver = $drivers[$choice - 1] ?? $default;
+            $driver = self::MARKDOWN_PARSERS[$choice - 1] ?? $default;
         } else {
             $driver = $default;
         }
 
-        $this->config['content.parser.driver'] = $driver;
-
-        if ($driver === 'commonmark' && !$hasCommonmark) {
-            $this->warning("  Note: Run 'composer require league/commonmark'");
-        } elseif ($driver === 'parsedown' && !$hasParsedown) {
-            $this->warning("  Note: Run 'composer require erusev/parsedown'");
+        if (!is_string($driver)) {
+            $this->error('  Unable to determine a valid markdown parser.');
+            return false;
         }
 
+        $resolution = self::resolveMarkdownParserSelection($driver, $availability, $hasExplicitSelection);
+
+        if ($resolution['error'] !== null) {
+            $this->error('  ' . $resolution['error']);
+            $this->line("  Or run ./install.sh --parser={$driver}");
+            return false;
+        }
+
+        if ($resolution['warning'] !== null) {
+            $this->warning('  ' . $resolution['warning']);
+
+            $package = self::markdownParserPackage($driver);
+            if ($package !== null) {
+                $this->line("  Install it later with: composer require {$package}");
+            }
+        }
+
+        $driver = $resolution['driver'];
+
+        $this->config['content.parser.driver'] = $driver;
+
         $this->success("  Markdown parser: {$driver}");
+
+        return true;
+    }
+
+    private function validateRequestedParserOption(): bool
+    {
+        $requestedDriver = $this->option('parser');
+
+        if ($requestedDriver === null) {
+            return true;
+        }
+
+        if (!is_string($requestedDriver) || trim($requestedDriver) === '') {
+            $this->error('The --parser option requires a value.');
+            return false;
+        }
+
+        $driver = self::normalizeMarkdownParser($requestedDriver);
+        if ($driver === null) {
+            $supported = implode(', ', self::MARKDOWN_PARSERS);
+            $this->error("Unsupported parser '{$requestedDriver}'. Use one of: {$supported}.");
+            return false;
+        }
+
+        $resolution = self::resolveMarkdownParserSelection($driver, self::markdownParserAvailability(), true);
+        if ($resolution['error'] !== null) {
+            $this->error($resolution['error']);
+            $this->line("Or run ./install.sh --parser={$driver}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * @return array{commonmark: bool, parsedown: bool, html: true}
+     */
+    private static function markdownParserAvailability(): array
+    {
+        return [
+            'commonmark' => class_exists(\League\CommonMark\MarkdownConverter::class),
+            'parsedown' => class_exists('Parsedown'),
+            'html' => true,
+        ];
+    }
+
+    /**
+     * @param array{commonmark: bool, parsedown: bool, html: bool} $availability
+     */
+    private static function defaultMarkdownParser(array $availability): string
+    {
+        if (($availability['commonmark'] ?? false) === true) {
+            return 'commonmark';
+        }
+
+        if (($availability['parsedown'] ?? false) === true) {
+            return 'parsedown';
+        }
+
+        return 'html';
+    }
+
+    private static function normalizeMarkdownParser(mixed $driver): ?string
+    {
+        if (!is_string($driver)) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($driver));
+
+        return in_array($normalized, self::MARKDOWN_PARSERS, true) ? $normalized : null;
+    }
+
+    private static function markdownParserPackage(string $driver): ?string
+    {
+        return match ($driver) {
+            'commonmark' => 'league/commonmark',
+            'parsedown' => 'erusev/parsedown',
+            default => null,
+        };
+    }
+
+    /**
+     * @param array{commonmark: bool, parsedown: bool, html: bool} $availability
+     * @return array{driver: string, warning: ?string, error: ?string}
+     */
+    private static function resolveMarkdownParserSelection(string $driver, array $availability, bool $hasExplicitSelection): array
+    {
+        if (($availability[$driver] ?? false) === true) {
+            return [
+                'driver' => $driver,
+                'warning' => null,
+                'error' => null,
+            ];
+        }
+
+        if ($hasExplicitSelection) {
+            $package = self::markdownParserPackage($driver);
+            $error = "The '{$driver}' parser is not installed.";
+
+            if ($package !== null) {
+                $error .= " Install it with: composer require {$package}";
+            }
+
+            return [
+                'driver' => $driver,
+                'warning' => null,
+                'error' => $error,
+            ];
+        }
+
+        $fallback = self::defaultMarkdownParser($availability);
+
+        return [
+            'driver' => $fallback,
+            'warning' => $driver === $fallback
+                ? null
+                : "The '{$driver}' parser is not installed; using '{$fallback}' instead.",
+            'error' => null,
+        ];
     }
 
     private function configureMultiTenancy(): void
@@ -397,6 +548,9 @@ class InstallCommand extends Command
 
         foreach ($files as $file) {
             $filename = basename($file);
+            if ($filename === 'version.php') {
+                continue;
+            }
             $target = $userConfigDir . '/' . $filename;
             if (!file_exists($target)) {
                 copy($file, $target);

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Commands;
 
+use VelvetCMS\Core\ConfigRepository;
+
 class OptimizeCommand extends Command
 {
     public static function category(): string
@@ -54,7 +56,9 @@ class OptimizeCommand extends Command
             config($config);
         }
 
-        \VelvetCMS\Core\ConfigRepository::getInstance()->cacheTo(storage_path('cache/config.php'));
+        /** @var ConfigRepository $repository */
+        $repository = app(ConfigRepository::class);
+        $repository->cacheTo(storage_path('cache/config.php'));
 
         $this->success('  ✓ Configuration cached');
 

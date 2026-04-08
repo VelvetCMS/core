@@ -23,7 +23,7 @@ class VersionCommand extends Command
 
     public function handle(): int
     {
-        $registry = \VelvetCMS\Core\VersionRegistry::instance();
+        $registry = app(\VelvetCMS\Core\VersionRegistry::class);
         $coreVersion = $registry->getVersion('core');
         $stability = $registry->getStability('core');
 

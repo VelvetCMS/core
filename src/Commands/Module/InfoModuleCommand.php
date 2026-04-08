@@ -55,10 +55,7 @@ class InfoModuleCommand extends Command
         }
         $this->line();
 
-        $path = $manifest->path;
-        if (!str_starts_with($path, '/')) {
-            $path = $this->app->basePath() . '/' . $path;
-        }
+        $path = $module->path();
 
         $this->line("\033[1mPath\033[0m");
         $this->line("  {$path}");
@@ -77,8 +74,8 @@ class InfoModuleCommand extends Command
         }
 
         $this->printConfigInfo($name, $path);
-        $this->printViewsInfo($path);
-        $this->printRoutesInfo($path, $manifest->extra);
+        $this->printViewsInfo($path, $manifest->views);
+        $this->printRoutesInfo($path, $manifest->routes);
         $this->printCommandsInfo($manifest->commands);
 
         return 0;
@@ -104,14 +101,24 @@ class InfoModuleCommand extends Command
         $this->line();
     }
 
-    private function printViewsInfo(string $path): void
+    private function printViewsInfo(string $path, ?string $viewsPath): void
     {
-        $viewsDir = $path . '/resources/views';
-        if (!is_dir($viewsDir)) {
+        if ($viewsPath === null || $viewsPath === '') {
             return;
         }
 
+        $viewsDir = $path . '/' . ltrim($viewsPath, '/');
         $count = 0;
+
+        $this->line("\033[1mViews\033[0m");
+        $this->line("  {$viewsPath}");
+
+        if (!is_dir($viewsDir)) {
+            $this->line("  \033[33mmissing\033[0m");
+            $this->line();
+            return;
+        }
+
         $iterator = new \RecursiveIteratorIterator(
             new \RecursiveDirectoryIterator($viewsDir, \FilesystemIterator::SKIP_DOTS)
         );
@@ -121,31 +128,26 @@ class InfoModuleCommand extends Command
             }
         }
 
-        $this->line("\033[1mViews\033[0m");
-        $this->line("  {$viewsDir}");
         $this->line("  {$count} template(s)");
         $this->line();
     }
 
-    private function printRoutesInfo(string $path, array $extra): void
+    private function printRoutesInfo(string $path, array $routes): void
     {
-        $routesDir = $path . '/routes';
-        if (!is_dir($routesDir)) {
+        if ($routes === []) {
             return;
         }
-
-        $files = glob($routesDir . '/*.php');
-        if ($files === [] || $files === false) {
-            return;
-        }
-
-        $autoload = ($extra['autoload']['routes'] ?? true) !== false;
 
         $this->line("\033[1mRoutes\033[0m");
-        foreach ($files as $file) {
-            $this->line('  ' . basename($file));
+        foreach ($routes as $type => $relativePath) {
+            if (!is_string($type) || !is_string($relativePath)) {
+                continue;
+            }
+
+            $routePath = $path . '/' . ltrim($relativePath, '/');
+            $status = file_exists($routePath) ? "\033[32mexists\033[0m" : "\033[33mmissing\033[0m";
+            $this->line("  {$type}: {$relativePath} ({$status})");
         }
-        $this->line('  Auto-load: ' . ($autoload ? "\033[32myes\033[0m" : "\033[33mno\033[0m (manual)"));
         $this->line();
     }
 

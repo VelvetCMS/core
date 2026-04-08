@@ -26,7 +26,8 @@ class ClearCommand extends Command
 
     public function handle(): int
     {
-        $repository = ConfigRepository::getInstance();
+        /** @var ConfigRepository $repository */
+        $repository = app(ConfigRepository::class);
         $cacheFile = storage_path('cache/config.php');
 
         if (!file_exists($cacheFile)) {

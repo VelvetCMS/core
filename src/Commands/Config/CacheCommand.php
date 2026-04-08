@@ -28,7 +28,8 @@ class CacheCommand extends Command
     {
         $this->info('Caching configuration...');
 
-        $repository = ConfigRepository::getInstance();
+        /** @var ConfigRepository $repository */
+        $repository = app(ConfigRepository::class);
         $destination = storage_path('cache/config.php');
 
         $repository->cacheTo($destination);

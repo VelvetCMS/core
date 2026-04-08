@@ -36,6 +36,8 @@ class ListModuleCommand extends Command
 
     public function handle(): int
     {
+        $artifactPaths = $this->app->make(ModuleArtifactPaths::class);
+
         if ((bool) $this->option('all-tenants', false)) {
             return $this->handleAllTenants();
         }
@@ -48,16 +50,16 @@ class ListModuleCommand extends Command
             return 0;
         }
 
-        $statePath = $this->firstExisting(ModuleArtifactPaths::stateCandidates($this->app->basePath()))
-            ?? ModuleArtifactPaths::statePath(basePath: $this->app->basePath());
+        $statePath = $this->firstExisting($artifactPaths->stateCandidates($this->app->basePath()))
+            ?? $artifactPaths->statePath(basePath: $this->app->basePath());
         $enabledModules = [];
         if (file_exists($statePath)) {
             $state = json_decode(file_get_contents($statePath), true);
             $enabledModules = $state['enabled'] ?? [];
         }
 
-        $compiledPath = $this->firstExisting(ModuleArtifactPaths::compiledCandidates($this->app->basePath()))
-            ?? ModuleArtifactPaths::compiledPath(basePath: $this->app->basePath());
+        $compiledPath = $this->firstExisting($artifactPaths->compiledCandidates($this->app->basePath()))
+            ?? $artifactPaths->compiledPath(basePath: $this->app->basePath());
         $compiledModules = [];
         if (file_exists($compiledPath)) {
             $compiledData = json_decode(file_get_contents($compiledPath), true);

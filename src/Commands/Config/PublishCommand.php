@@ -63,7 +63,8 @@ class PublishCommand extends Command
     {
         [$namespace, $file] = explode(':', $key, 2);
 
-        $repo = ConfigRepository::getInstance();
+        /** @var ConfigRepository $repo */
+        $repo = app(ConfigRepository::class);
         $namespacePaths = $repo->getNamespacePaths();
 
         $modulePath = $namespacePaths[$namespace] ?? null;

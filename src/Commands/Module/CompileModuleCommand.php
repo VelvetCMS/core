@@ -38,6 +38,8 @@ class CompileModuleCommand extends Command
 
     public function handle(): int
     {
+        $artifactPaths = $this->app->make(ModuleArtifactPaths::class);
+
         if ((bool) $this->option('all-tenants', false)) {
             return $this->handleAllTenants();
         }
@@ -46,7 +48,7 @@ class CompileModuleCommand extends Command
         $this->line();
 
         $moduleManager = $this->app->make(ModuleManager::class);
-        $versionRegistry = VersionRegistry::instance();
+        $versionRegistry = $this->app->make(VersionRegistry::class);
 
         $discovered = $moduleManager->discover();
 
@@ -119,24 +121,13 @@ class CompileModuleCommand extends Command
 
             $typed = ModuleManifest::fromArray($name, $manifest, true);
 
-            $compiled['modules'][] = [
-                'name' => $typed->name,
-                'version' => $typed->version,
-                'path' => $typed->path,
-                'entry' => $typed->entry,
-                'enabled' => true,
-                'load_order' => $index + 1,
-                'requires' => $typed->requires,
-                'conflicts' => $typed->conflicts,
-                'provides' => $typed->provides,
-                'commands' => $typed->commands,
-                'description' => $typed->description,
-                'stability' => $typed->stability,
-                'extra' => $typed->extra,
-            ];
+            $compiled['modules'][] = array_merge(
+                $typed->toArray(),
+                ['load_order' => $index + 1]
+            );
         }
 
-        $compiledPath = ModuleArtifactPaths::compiledPath(basePath: $this->app->basePath());
+        $compiledPath = $artifactPaths->compiledPath(basePath: $this->app->basePath());
         $compiledDir = dirname($compiledPath);
         if (!is_dir($compiledDir)) {
             mkdir($compiledDir, 0755, true);
@@ -154,7 +145,7 @@ class CompileModuleCommand extends Command
 
         $this->line("\033[32m✓ Successfully compiled " . count($compiled['modules']) . " module(s)\033[0m");
         $this->line('  Written to: ' . $this->relativeToBase($compiledPath));
-        $this->line('  Autoloader: ' . $this->relativeToBase(ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath())));
+        $this->line('  Autoloader: ' . $this->relativeToBase($artifactPaths->autoloadPath(basePath: $this->app->basePath())));
 
         return 0;
     }
@@ -198,6 +189,7 @@ class CompileModuleCommand extends Command
 
     private function generateAutoloader(array $modules): void
     {
+        $artifactPaths = $this->app->make(ModuleArtifactPaths::class);
         $autoloadMappings = [];
         $files = [];
 
@@ -238,7 +230,7 @@ class CompileModuleCommand extends Command
         $php .= " */\n\n";
         $php .= 'return ' . var_export($config, true) . ";\n";
 
-        $autoloadPath = ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath());
+        $autoloadPath = $artifactPaths->autoloadPath(basePath: $this->app->basePath());
         $autoloadDir = dirname($autoloadPath);
         if (!is_dir($autoloadDir)) {
             mkdir($autoloadDir, 0755, true);
@@ -254,7 +246,7 @@ class CompileModuleCommand extends Command
 
     private function verifyEntryAutoload(array $modules): void
     {
-        $autoloadPath = ModuleArtifactPaths::autoloadPath(basePath: $this->app->basePath());
+        $autoloadPath = $this->app->make(ModuleArtifactPaths::class)->autoloadPath(basePath: $this->app->basePath());
 
         if (!file_exists($autoloadPath)) {
             throw new \RuntimeException('module autoloader not generated');
