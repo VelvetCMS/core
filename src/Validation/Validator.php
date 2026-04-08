@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Validation;
 
-use Closure;
+use VelvetCMS\Core\Application;
 use VelvetCMS\Exceptions\ValidationException;
 
 class Validator
@@ -12,35 +12,18 @@ class Validator
     private array $data;
     private array $rules;
     private array $errors = [];
+    private ValidationExtensionRegistry $extensions;
 
-    /** @var array<string, Closure> */
-    private static array $extensions = [];
-
-    public function __construct(array $data, array $rules)
+    public function __construct(array $data, array $rules, ?ValidationExtensionRegistry $extensions = null)
     {
         $this->data = $data;
         $this->rules = $rules;
+        $this->extensions = $extensions ?? self::registry() ?? new ValidationExtensionRegistry();
     }
 
     public static function make(array $data, array $rules): self
     {
-        return new self($data, $rules);
-    }
-
-    /**
-     * Register a custom validation rule.
-     *
-     * Callback signature: fn(mixed $value, ?string $parameter, array $data, string $field): bool|string
-     * Return true if valid, false or error message string if invalid.
-     */
-    public static function extend(string $rule, Closure $callback): void
-    {
-        self::$extensions[$rule] = $callback;
-    }
-
-    public static function hasExtension(string $rule): bool
-    {
-        return isset(self::$extensions[$rule]);
+        return new self($data, $rules, self::registry());
     }
 
     public function validate(): array
@@ -82,8 +65,9 @@ class Validator
     private function checkRule(string $field, mixed $value, string $rule, ?string $parameter): void
     {
         // Check custom extensions first
-        if (isset(self::$extensions[$rule])) {
-            $result = (self::$extensions[$rule])($value, $parameter, $this->data, $field);
+        $extension = $this->extensions->get($rule);
+        if ($extension !== null) {
+            $result = $extension($value, $parameter, $this->data, $field);
 
             if ($result === false) {
                 $this->addError($field, "The {$field} field is invalid.");
@@ -227,5 +211,17 @@ class Validator
             return strlen((string) $value);
         }
         return 0;
+    }
+
+    private static function registry(): ?ValidationExtensionRegistry
+    {
+        if (!Application::hasInstance()) {
+            return null;
+        }
+
+        /** @var ValidationExtensionRegistry $registry */
+        $registry = Application::getInstance()->make(ValidationExtensionRegistry::class);
+
+        return $registry;
     }
 }
