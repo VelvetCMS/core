@@ -20,8 +20,12 @@ class Page
         public ?DateTime $createdAt = null,
         public ?DateTime $updatedAt = null,
         public ?DateTime $publishedAt = null,
-        private ?string $renderedHtml = null
+        private ?string $renderedHtml = null,
+        public string $id = ''
     ) {
+        if ($this->id === '') {
+            $this->id = uuid_v7();
+        }
         $this->createdAt ??= new DateTime();
         $this->updatedAt ??= new DateTime();
     }
@@ -29,6 +33,7 @@ class Page
     public static function fromArray(array $data): self
     {
         return new self(
+            id: $data['id'] ?? uuid_v7(),
             slug: $data['slug'] ?? '',
             title: $data['title'] ?? 'Untitled',
             content: $data['content'] ?? '',
@@ -70,6 +75,7 @@ class Page
     public function toArray(): array
     {
         return [
+            'id' => $this->id,
             'slug' => $this->slug,
             'title' => $this->title,
             'content' => $this->content,

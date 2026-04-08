@@ -7,6 +7,7 @@ namespace VelvetCMS\Services;
 use Symfony\Component\Yaml\Yaml;
 use VelvetCMS\Contracts\CacheDriver;
 use VelvetCMS\Contracts\ParserInterface;
+use VelvetCMS\Core\ConfigRepository;
 
 /**
  * Unified content parser for Markdown and Velvet (.vlt) documents.
@@ -16,7 +17,8 @@ class ContentParser
 {
     public function __construct(
         private readonly CacheDriver $cache,
-        private readonly ParserInterface $parser
+        private readonly ParserInterface $parser,
+        private readonly ConfigRepository $config
     ) {
     }
 
@@ -48,7 +50,7 @@ class ContentParser
         }
 
         $key = 'md:' . md5($content);
-        $ttl = (int) config('content.parser.cache_ttl', 600);
+        $ttl = (int) $this->config->get('content.parser.cache_ttl', 600);
 
         return $this->cache->remember($key, $ttl, fn () => $this->parser->parse($content));
     }

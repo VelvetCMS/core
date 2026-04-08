@@ -9,6 +9,7 @@ use VelvetCMS\Models\Page;
 final readonly class PageIndexEntry
 {
     public function __construct(
+        public string $id,
         public string $slug,
         public string $path,
         public int $mtime,
@@ -28,6 +29,7 @@ final readonly class PageIndexEntry
     public static function fromArray(array $data): self
     {
         return new self(
+            id: (string) ($data['id'] ?? uuid_v7()),
             slug: (string) $data['slug'],
             path: (string) $data['path'],
             mtime: (int) $data['mtime'],
@@ -47,6 +49,7 @@ final readonly class PageIndexEntry
     public function toArray(): array
     {
         return [
+            'id' => $this->id,
             'slug' => $this->slug,
             'path' => $this->path,
             'mtime' => $this->mtime,
@@ -66,6 +69,7 @@ final readonly class PageIndexEntry
     public function toPage(): Page
     {
         return Page::fromArray([
+            'id' => $this->id,
             'slug' => $this->slug,
             'title' => $this->title,
             'content' => '',

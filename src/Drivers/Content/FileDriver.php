@@ -178,6 +178,7 @@ class FileDriver implements ContentDriver
     private function buildFileContent(Page $page): string
     {
         $frontmatter = [
+            'id' => $page->id,
             'title' => $page->title,
             'status' => $page->status,
         ];
@@ -252,6 +253,10 @@ class FileDriver implements ContentDriver
     private function validatePage(Page $page): void
     {
         $errors = [];
+
+        if (empty($page->id) || !is_uuid($page->id)) {
+            $errors['id'] = 'Valid UUID is required';
+        }
 
         if (empty($page->slug)) {
             $errors['slug'] = 'Slug is required';

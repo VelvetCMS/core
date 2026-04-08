@@ -8,6 +8,8 @@ interface PageIndex
 {
     public function get(string $slug): ?PageIndexEntry;
 
+    public function getById(string $id): ?PageIndexEntry;
+
     public function put(PageIndexEntry $entry): void;
 
     public function delete(string $slug): void;

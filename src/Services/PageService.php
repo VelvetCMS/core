@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Services;
 
+use VelvetCMS\Content\Index\PageIndex;
 use VelvetCMS\Contracts\CacheDriver;
 use VelvetCMS\Contracts\ContentDriver;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Database\Collection;
 use VelvetCMS\Models\Page;
@@ -15,9 +17,11 @@ class PageService
 {
     public function __construct(
         private readonly ContentDriver $driver,
+        private readonly PageIndex $index,
         private readonly EventDispatcher $events,
         private readonly CacheDriver $cache,
-        private readonly CacheTagManager $cacheTags
+        private readonly CacheTagManager $cacheTags,
+        private readonly ConfigRepository $config
     ) {
     }
 
@@ -40,6 +44,21 @@ class PageService
 
             return $page;
         });
+    }
+
+    /**
+     * Load a page by its stable UUIDv7 identity.
+     * Resolves id → slug via the PageIndex, then delegates to load().
+     */
+    public function loadById(string $id): Page
+    {
+        $entry = $this->index->getById($id);
+
+        if ($entry === null) {
+            throw new \VelvetCMS\Exceptions\NotFoundException("Page with id '{$id}' not found");
+        }
+
+        return $this->load($entry->slug);
     }
 
     public function save(Page $page): bool
@@ -127,12 +146,12 @@ class PageService
 
     private function cacheEnabled(): bool
     {
-        return (bool) config('content.drivers.file.cache_enabled', true);
+        return (bool) $this->config->get('content.drivers.file.cache_enabled', true);
     }
 
     private function cacheTtl(): int
     {
-        return (int) config('content.drivers.file.cache_ttl', 300);
+        return (int) $this->config->get('content.drivers.file.cache_ttl', 300);
     }
 
     private function makeListCacheKey(array $filters): string

@@ -4,38 +4,42 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Content\Index;
 
-use PDO;
-use PDOException;
+use VelvetCMS\Database\Connection;
 
 final class SqlitePageIndex implements PageIndex
 {
-    private ?PDO $pdo = null;
-
     public function __construct(
-        private readonly string $path,
+        private readonly Connection $connection,
     ) {
     }
 
     public function get(string $slug): ?PageIndexEntry
     {
-        $statement = $this->pdo()->prepare('SELECT * FROM page_index WHERE slug = :slug LIMIT 1');
-        $statement->execute(['slug' => $slug]);
-        $row = $statement->fetch();
+        $rows = $this->connection->query('SELECT * FROM page_index WHERE slug = ? LIMIT 1', [$slug]);
 
-        return is_array($row) ? $this->mapRowToEntry($row) : null;
+        return isset($rows[0]) ? $this->mapRowToEntry($rows[0]) : null;
+    }
+
+    public function getById(string $id): ?PageIndexEntry
+    {
+        $rows = $this->connection->query('SELECT * FROM page_index WHERE id = ? LIMIT 1', [$id]);
+
+        return isset($rows[0]) ? $this->mapRowToEntry($rows[0]) : null;
     }
 
     public function put(PageIndexEntry $entry): void
     {
-        $statement = $this->pdo()->prepare(
+        $pdo = $this->connection->getPdo();
+        $statement = $pdo->prepare(
             'INSERT INTO page_index (
-                slug, path, mtime, format, title, status, layout, excerpt, trusted,
+                id, slug, path, mtime, format, title, status, layout, excerpt, trusted,
                 created_at, updated_at, published_at, meta_json
             ) VALUES (
-                :slug, :path, :mtime, :format, :title, :status, :layout, :excerpt, :trusted,
+                :id, :slug, :path, :mtime, :format, :title, :status, :layout, :excerpt, :trusted,
                 :created_at, :updated_at, :published_at, :meta_json
             )
             ON CONFLICT(slug) DO UPDATE SET
+                id = excluded.id,
                 path = excluded.path,
                 mtime = excluded.mtime,
                 format = excluded.format,
@@ -55,8 +59,7 @@ final class SqlitePageIndex implements PageIndex
 
     public function delete(string $slug): void
     {
-        $statement = $this->pdo()->prepare('DELETE FROM page_index WHERE slug = :slug');
-        $statement->execute(['slug' => $slug]);
+        $this->connection->statement('DELETE FROM page_index WHERE slug = ?', [$slug]);
     }
 
     public function query(?PageIndexQuery $query = null): array
@@ -64,9 +67,7 @@ final class SqlitePageIndex implements PageIndex
         $query ??= new PageIndexQuery();
 
         [$sql, $bindings] = $this->buildSelectSql($query, 'SELECT * FROM page_index');
-        $statement = $this->pdo()->prepare($sql);
-        $statement->execute($bindings);
-        $rows = $statement->fetchAll();
+        $rows = $this->connection->query($sql, $bindings);
 
         return array_map(fn (array $row): PageIndexEntry => $this->mapRowToEntry($row), $rows);
     }
@@ -75,17 +76,16 @@ final class SqlitePageIndex implements PageIndex
     {
         $query ??= new PageIndexQuery();
         $bindings = [];
-        $sql = 'SELECT COUNT(*) FROM page_index';
+        $sql = 'SELECT COUNT(*) as cnt FROM page_index';
 
         if ($query->status !== null) {
-            $sql .= ' WHERE status = :status';
-            $bindings['status'] = $query->status;
+            $sql .= ' WHERE status = ?';
+            $bindings[] = $query->status;
         }
 
-        $statement = $this->pdo()->prepare($sql);
-        $statement->execute($bindings);
+        $rows = $this->connection->query($sql, $bindings);
 
-        return (int) $statement->fetchColumn();
+        return (int) ($rows[0]['cnt'] ?? 0);
     }
 
     public function sync(iterable $filesBySlug, PageIndexer $indexer): void
@@ -93,7 +93,7 @@ final class SqlitePageIndex implements PageIndex
         $existing = $this->loadExistingEntries();
         $seen = [];
 
-        $this->pdo()->beginTransaction();
+        $this->connection->beginTransaction();
 
         try {
             foreach ($filesBySlug as $slug => $filepath) {
@@ -112,79 +112,29 @@ final class SqlitePageIndex implements PageIndex
                 }
             }
 
-            $this->pdo()->commit();
+            $this->connection->commit();
         } catch (\Throwable $e) {
-            $this->pdo()->rollBack();
+            $this->connection->rollback();
             throw $e;
         }
     }
 
     public function rebuild(iterable $filesBySlug, PageIndexer $indexer): void
     {
-        $this->pdo()->beginTransaction();
+        $this->connection->beginTransaction();
 
         try {
-            $this->pdo()->exec('DELETE FROM page_index');
+            $this->connection->statement('DELETE FROM page_index');
 
             foreach ($filesBySlug as $slug => $filepath) {
                 $this->put($indexer->indexFile($slug, $filepath));
             }
 
-            $this->pdo()->commit();
+            $this->connection->commit();
         } catch (\Throwable $e) {
-            $this->pdo()->rollBack();
+            $this->connection->rollback();
             throw $e;
         }
-    }
-
-    private function pdo(): PDO
-    {
-        if ($this->pdo !== null) {
-            return $this->pdo;
-        }
-
-        $directory = dirname($this->path);
-        if (!is_dir($directory)) {
-            mkdir($directory, 0755, true);
-        }
-
-        try {
-            $this->pdo = new PDO('sqlite:' . $this->path);
-        } catch (PDOException $e) {
-            throw new \RuntimeException('SQLite page index connection failed: ' . $e->getMessage(), previous: $e);
-        }
-
-        $this->pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        $this->pdo->setAttribute(PDO::ATTR_EMULATE_PREPARES, false);
-        $this->pdo->exec('PRAGMA foreign_keys = ON');
-        $this->initializeSchema();
-
-        return $this->pdo;
-    }
-
-    private function initializeSchema(): void
-    {
-        $this->pdo->exec(
-            'CREATE TABLE IF NOT EXISTS page_index (
-                slug TEXT PRIMARY KEY,
-                path TEXT NOT NULL,
-                mtime INTEGER NOT NULL,
-                format TEXT NOT NULL,
-                title TEXT NOT NULL,
-                status TEXT NOT NULL,
-                layout TEXT NULL,
-                excerpt TEXT NULL,
-                trusted INTEGER NOT NULL DEFAULT 0,
-                created_at TEXT NULL,
-                updated_at TEXT NULL,
-                published_at TEXT NULL,
-                meta_json TEXT NOT NULL DEFAULT \'{}\'
-            )'
-        );
-        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_page_index_status ON page_index(status)');
-        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_page_index_created_at ON page_index(created_at)');
-        $this->pdo->exec('CREATE INDEX IF NOT EXISTS idx_page_index_published_at ON page_index(published_at)');
     }
 
     /**
@@ -192,7 +142,7 @@ final class SqlitePageIndex implements PageIndex
      */
     private function loadExistingEntries(): array
     {
-        $rows = $this->pdo()->query('SELECT slug, path, mtime FROM page_index')->fetchAll();
+        $rows = $this->connection->query('SELECT slug, path, mtime FROM page_index');
         $existing = [];
 
         foreach ($rows as $row) {
@@ -206,7 +156,7 @@ final class SqlitePageIndex implements PageIndex
     }
 
     /**
-     * @return array{0: string, 1: array<string, mixed>}
+     * @return array{0: string, 1: array<int, mixed>}
      */
     private function buildSelectSql(PageIndexQuery $query, string $baseSql): array
     {
@@ -214,8 +164,8 @@ final class SqlitePageIndex implements PageIndex
         $sql = $baseSql;
 
         if ($query->status !== null) {
-            $sql .= ' WHERE status = :status';
-            $bindings['status'] = $query->status;
+            $sql .= ' WHERE status = ?';
+            $bindings[] = $query->status;
         }
 
         $orderBy = match ($query->orderBy) {
@@ -230,8 +180,8 @@ final class SqlitePageIndex implements PageIndex
         $sql .= " ORDER BY {$orderBy} {$direction}, slug ASC";
 
         if ($query->limit !== null) {
-            $sql .= ' LIMIT :limit';
-            $bindings['limit'] = $query->limit;
+            $sql .= ' LIMIT ?';
+            $bindings[] = $query->limit;
         }
 
         if ($query->offset > 0) {
@@ -239,8 +189,8 @@ final class SqlitePageIndex implements PageIndex
                 $sql .= ' LIMIT -1';
             }
 
-            $sql .= ' OFFSET :offset';
-            $bindings['offset'] = $query->offset;
+            $sql .= ' OFFSET ?';
+            $bindings[] = $query->offset;
         }
 
         return [$sql, $bindings];
@@ -251,6 +201,7 @@ final class SqlitePageIndex implements PageIndex
         $meta = json_decode((string) ($row['meta_json'] ?? '{}'), true);
 
         return new PageIndexEntry(
+            id: (string) ($row['id'] ?? uuid_v7()),
             slug: (string) $row['slug'],
             path: (string) $row['path'],
             mtime: (int) $row['mtime'],
@@ -273,6 +224,7 @@ final class SqlitePageIndex implements PageIndex
     private function entryBindings(PageIndexEntry $entry): array
     {
         return [
+            'id' => $entry->id,
             'slug' => $entry->slug,
             'path' => $entry->path,
             'mtime' => $entry->mtime,

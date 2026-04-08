@@ -23,6 +23,19 @@ final class JsonPageIndex implements PageIndex
         return $this->entries[$slug] ?? null;
     }
 
+    public function getById(string $id): ?PageIndexEntry
+    {
+        $this->load();
+
+        foreach ($this->entries as $entry) {
+            if ($entry->id === $id) {
+                return $entry;
+            }
+        }
+
+        return null;
+    }
+
     public function put(PageIndexEntry $entry): void
     {
         $this->load();
