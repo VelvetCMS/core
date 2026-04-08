@@ -2,6 +2,166 @@
 
 This document covers **breaking changes** and required actions when upgrading between versions. For new features and improvements, see the [release notes](https://github.com/VelvetCMS/core/releases).
 
+## 2.2.0
+
+Version 2.2 is a **dependency injection and architecture** update. Static singletons and global state are replaced by container-managed instances across the board. The module contract becomes fully declarative, pages gain stable identity, and the runtime dependency footprint shrinks.
+
+### Breaking changes
+
+#### Static singletons removed
+
+Several classes that previously used static `getInstance()` / `instance()` patterns are now resolved through the service container.
+
+**Impact:**
+- `ConfigRepository::getInstance()` and `ConfigRepository::setInstance()` no longer exist.
+- `VersionRegistry::instance()` no longer exists.
+- Code calling these static accessors will get a fatal error.
+
+**Action required:**
+- Replace `ConfigRepository::getInstance()` with `app(ConfigRepository::class)`.
+- Replace `VersionRegistry::instance()` with `app(VersionRegistry::class)`.
+
+#### TenancyManager is no longer static
+
+All `TenancyManager` methods changed from `static` to instance methods. Tenancy state is now held by the `TenancyState` class.
+
+**Impact:**
+- Static calls like `TenancyManager::currentId()`, `TenancyManager::isEnabled()`, `TenancyManager::config()`, and `TenancyManager::bootstrapFromRequest()` will fatal.
+
+**Action required:**
+- Resolve the manager from the container: `app(TenancyManager::class)->currentId()`.
+- For direct state access, use `app(TenancyState::class)->currentId()`, `->isEnabled()`, etc.
+
+#### AssetServer is no longer static
+
+`AssetServer` is now a `final` instance class registered as a container singleton.
+
+**Impact:**
+- `AssetServer::serve()`, `AssetServer::module()`, `AssetServer::init()` no longer exist as static methods.
+- `init()` renamed to `initialize()`, `module()` renamed to `registerModule()`, `getModulePaths()` removed.
+
+**Action required:**
+- Resolve from the container: `app(AssetServer::class)->serve(...)`.
+- Update renamed methods: `init()` → `initialize()`, `module()` → `registerModule()`.
+
+#### Routes and views are now declarative
+
+Convention-based auto-discovery of `routes/web.php`, `routes/api.php`, and `resources/views/` is removed. Modules must declare these in `module.json`:
+
+```json
+{
+    "routes": {
+        "web": "routes/web.php",
+        "api": "routes/api.php"
+    },
+    "views": "resources/views"
+}
+```
+
+`api` routes are automatically grouped under the `/api` prefix.
+
+Route files must now return an explicit registrar closure:
+
+```php
+<?php
+
+declare(strict_types=1);
+
+use VelvetCMS\Core\Application;
+use VelvetCMS\Http\Routing\Router;
+
+return static function (Router $router, Application $app): void {
+    $router->get('/docs', [DocsController::class, 'index']);
+};
+```
+
+**Impact:**
+- `BaseModule::loadRoutesFrom()` is removed.
+- The `extra.autoload.routes` opt-out key is no longer recognized.
+- Module manifest `extra` field semantics changed: previously all unknown top-level keys in `module.json` were collected into `extra`; now only an explicit `"extra"` key is read. Custom top-level keys outside `"extra"` will be silently lost.
+- `BaseModule::loadViewsFrom()` still exists, but declarative view manifests are the default path.
+
+**Action required:**
+- Add `routes` and `views` keys to every `module.json`.
+- Convert route files to return a registrar closure.
+- Move any custom top-level keys in `module.json` under `"extra": { ... }`.
+
+#### UUIDv7 page identity
+
+Pages now carry a stable `id` (UUIDv7) in frontmatter alongside the `slug`. The page indexer automatically backfills `id` into existing content files that lack one.
+
+**Impact:**
+- `PageIndex` interface adds `getById()`. All custom implementations must add this method.
+- `SqlitePageIndex` constructor changed from `string $path` to `Connection $connection`.
+- `FileDriver::validatePage()` rejects pages without a valid UUID `id`.
+- Content files without `id:` in frontmatter will be mutated by the indexer on the next index operation.
+- `PageService` constructor gains `PageIndex` and `ConfigRepository` parameters.
+
+**Action required:**
+- Custom `PageIndex` implementations must add `getById(string $id): ?PageIndexEntry`.
+- Code instantiating `SqlitePageIndex` directly must pass a `Connection` instance.
+- Code instantiating `PageService` directly must pass the additional parameters.
+- If your content files are under version control, expect a one-time diff when the indexer backfills `id` fields.
+
+#### Route caching
+
+`route:cache` now collects routes from all sources (modules + defaults).
+
+**Impact:**
+- Only `[Controller::class, 'method']` handlers are cacheable.
+- Closure-based routes make `route:cache` fail fast with a clear error.
+
+**Action required:**
+- Convert any closure route handlers to controller references before running `route:cache`.
+
+#### PHP migrations now receive a schema instance
+
+The static `Schema` runtime owner is removed. `Schema::create()`, `Schema::drop()`, and `Schema::dropIfExists()` are now instance methods. PHP migrations receive a `Schema` instance explicitly.
+
+**Impact:**
+- Zero-argument migration methods are no longer the supported first-party contract.
+- Migration bodies should use the injected schema instance instead of static schema calls.
+
+**Action required:**
+- Change `up(): void` to `up(Schema $schema): void`.
+- Change `down(): void` to `down(Schema $schema): void` when present.
+- Replace `Schema::create(...)`, `Schema::drop(...)`, and `Schema::dropIfExists(...)` with `$schema->create(...)`, `$schema->drop(...)`, and `$schema->dropIfExists(...)` inside PHP migrations.
+
+#### Validator static extension API removed
+
+`Validator::extend()` and `Validator::hasExtension()` static methods are removed. Custom validation rules must be registered through the container-managed `ValidationExtensionRegistry`.
+
+**Impact:**
+- Code calling `Validator::extend('rule', ...)` will fatal.
+
+**Action required:**
+- Replace `Validator::extend('rule', $callback)` with `app(ValidationExtensionRegistry::class)->extend('rule', $callback)`.
+
+#### ContentParser constructor signature changed
+
+`ContentParser` constructor gains a `ConfigRepository` parameter.
+
+**Impact:**
+- Code instantiating `ContentParser` directly must pass the additional parameter.
+
+**Action required:**
+- Pass `app(ConfigRepository::class)` when constructing `ContentParser` manually, or resolve it through the container.
+
+#### `symfony/console` removed from production dependencies
+
+`symfony/console` moved from `require` to `require-dev`. It remains available for the CLI tooling but is no longer installed for production HTTP deployments.
+
+**Impact:**
+- `composer install --no-dev` deployments that relied on `symfony/console` classes transitively will get class-not-found errors.
+
+**Action required:**
+- If your code uses Symfony Console classes at runtime, add `symfony/console` to your own `require` section.
+
+#### Minor breaking changes
+
+- `api_version` key removed from `config/version.php`. Code reading `config('version.core.api_version')` will get `null`.
+- `request()` helper changed from a function-scoped `static` variable to `$GLOBALS['__velvet_request']`. Behavioral difference is minimal but may surface in testing or long-running processes.
+
 ## 2.1.0
 
 Version 2.1 is a **modules, correctness, and polishing** update. The module system becomes convention-driven, global state is eliminated, and legacy PHP patterns are modernized.
@@ -95,7 +255,7 @@ Modules can opt out of route auto-loading via `module.json`:
 ```
 
 **Action required:**
-- No action required. Existing manual `loadViewsFrom()` / `loadRoutesFrom()` calls still work but are now redundant if your module follows the directory conventions.
+- No action required in 2.1. If you are targeting 2.2+, route files must use the explicit registrar closure shown above; `loadViewsFrom()` remains optional and redundant when your manifest already declares `views`.
 
 ## 2.0.0
 

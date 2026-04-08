@@ -21,6 +21,11 @@ Thanks for your interest in contributing to VelvetCMS.
    composer test
    ```
 
+   For optional integrations and adapter coverage:
+   ```bash
+   composer test:external
+   ```
+
 4. **Run QA checks**
    ```bash
    composer qa

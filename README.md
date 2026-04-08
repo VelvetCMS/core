@@ -48,7 +48,7 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
   - **Drivers**: Support for `CommonMark` (recommended), `Parsedown`, or simple `HTML` pass-through.
   - **Extensible**: Custom template tags (`{{ }}`, `{!! !!}`) preserved in all drivers.
   - **CommonMark Features**: Tables, Strikethrough, Autolink, Task Lists (via extensions).
-- **Velvet Content Blocks**: `.vlt` files with YAML frontmatter and block switches (`@markdown`, `@html`, `@text`, `@component`).
+- **Velvet Content Blocks**: `.vlt` files with YAML frontmatter and block switches (`@markdown`, `@html`, `@text`).
 - **Data Store**: Simple key-value collections with `File`, `Database`, or `Auto` drivers for module data.
 - **Smart Caching**: Multi-driver support (`Apcu`, `File`, `Redis`) for caching queries, pages, routes, configuration, templates, and markdown compilation.
 - **File Storage**:
@@ -62,11 +62,15 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
   - Named routes and parameters
   - Optional and wildcard parameters (`{param?}`, `{param*}`)
   - Middleware pipelines and global middleware
+- **HTTP Client**:
+  - **cURL-backed**: Lightweight outbound HTTP client for integrations, webhooks, and service-to-service calls.
+  - **Ergonomic Requests**: GET, POST, PUT, PATCH, DELETE, query helpers, JSON/form/raw bodies, default headers, bearer auth, and basic auth.
+  - **Typed Responses**: Status helpers, header access, JSON decoding, retry support, and `throw()` for failed responses.
 - **Validation Service**:
   - **Standalone Validator**: reuse validation logic anywhere (CLI, API, Imports).
   - **Rich Rule Set**: `required`, `email`, `url`, `min`, `max`, `regex`, `numeric`, `integer`, `boolean`, `alpha`, `alphanumeric`, `in`, `same`, `different`, `date`, `array`.
   - **Fluent API**: `Validator::make($data, $rules)->validate()`.
-  - **Custom Rules**: `Validator::extend('slug', fn($value) => ...)` for project-specific validation.
+  - **Custom Rules**: `app(ValidationExtensionRegistry::class)->extend('slug', fn($value) => ...)` for project-specific validation.
 - **View Engine**: Lightweight yet powerful templating system featuring:
   - Blade-like syntax (`{{ }}`, `{!! !!}`)
   - Blade-style comments (`{{-- ... --}}`)
@@ -125,6 +129,7 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
 ## Requirements
 
 - **PHP 8.4+** (+ extensions: `pdo`, `mbstring`, `json`)
+- **Optional PHP extensions**: `curl` for the HTTP client, `apcu` for APCu cache, `redis` for Redis cache
 - **Linux/WSL2**
 - Composer
 - SQLite, MySQL, or PostgreSQL (optional)
