@@ -4,34 +4,26 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Core;
 
-/**
- * Typed module manifest data.
- *
- * This is intentionally a small value object:
- * - validates and normalizes shape
- * - can round-trip to array for backwards compatibility
- */
 final class ModuleManifest
 {
-    /**
-     * @param array<string, string> $requires
-     * @param string[] $conflicts
-     * @param array<string, mixed> $provides
-     * @param array<string, string> $commands  Signature → FQCN
-     * @param array<string, mixed> $extra
-     */
     public function __construct(
         public readonly string $name,
         public readonly string $version,
         public readonly string $path,
         public readonly string $entry,
         public readonly bool $enabled,
+        /** @var array<string, string> */
         public readonly array $requires = [],
         public readonly array $conflicts = [],
         public readonly array $provides = [],
+        /** @var array<string, string> Signature → FQCN */
         public readonly array $commands = [],
+        /** @var array<string, string> Type → relative path */
+        public readonly array $routes = [],
+        public readonly ?string $views = null,
         public readonly ?string $description = null,
         public readonly ?string $stability = null,
+        /** @var array<string, mixed> Freeform metadata from module.json "extra" key */
         public readonly array $extra = [],
     ) {
         if ($this->name === '') {
@@ -47,67 +39,30 @@ final class ModuleManifest
         }
     }
 
-    /**
-     * @param array<string, mixed> $data
-     */
     public static function fromArray(string $name, array $data, bool $enabled = true): self
     {
-        $manifestName = (string) ($data['name'] ?? $name);
-
-        $version = (string) ($data['version'] ?? '0.0.0');
-        $path = (string) ($data['path'] ?? '');
-        $entry = (string) ($data['entry'] ?? '');
-
-        $requires = is_array($data['requires'] ?? null) ? $data['requires'] : [];
-        $conflicts = is_array($data['conflicts'] ?? null) ? array_values($data['conflicts']) : [];
-        $provides = is_array($data['provides'] ?? null) ? $data['provides'] : [];
-
-        $commands = is_array($data['commands'] ?? null) ? self::normalizeCommands($data['commands']) : [];
-
-        $description = isset($data['description']) ? (string) $data['description'] : null;
-        $stability = isset($data['stability']) ? (string) $data['stability'] : null;
-
-        $known = [
-            'name' => true,
-            'version' => true,
-            'path' => true,
-            'entry' => true,
-            'enabled' => true,
-            'requires' => true,
-            'conflicts' => true,
-            'provides' => true,
-            'commands' => true,
-            'description' => true,
-            'stability' => true,
-        ];
-
-        $extra = [];
-        foreach ($data as $key => $value) {
-            if (!isset($known[(string) $key])) {
-                $extra[(string) $key] = $value;
-            }
-        }
-
         return new self(
-            name: $manifestName,
-            version: $version,
-            path: $path,
-            entry: $entry,
+            name: (string) ($data['name'] ?? $name),
+            version: (string) ($data['version'] ?? '0.0.0'),
+            path: (string) ($data['path'] ?? ''),
+            entry: (string) ($data['entry'] ?? ''),
             enabled: $enabled,
-            requires: self::normalizeRequires($requires),
-            conflicts: self::normalizeStringList($conflicts),
-            provides: $provides,
-            commands: $commands,
-            description: $description,
-            stability: $stability,
-            extra: $extra,
+            requires: self::normalizeRequires(is_array($data['requires'] ?? null) ? $data['requires'] : []),
+            conflicts: self::normalizeStringList(is_array($data['conflicts'] ?? null) ? array_values($data['conflicts']) : []),
+            provides: is_array($data['provides'] ?? null) ? $data['provides'] : [],
+            commands: is_array($data['commands'] ?? null) ? self::normalizeCommands($data['commands']) : [],
+            routes: is_array($data['routes'] ?? null) ? self::normalizeRoutes($data['routes']) : [],
+            views: isset($data['views']) ? (string) $data['views'] : null,
+            description: isset($data['description']) ? (string) $data['description'] : null,
+            stability: isset($data['stability']) ? (string) $data['stability'] : null,
+            extra: is_array($data['extra'] ?? null) ? $data['extra'] : [],
         );
     }
 
     /** @return array<string, mixed> */
     public function toArray(): array
     {
-        return array_merge([
+        return [
             'name' => $this->name,
             'version' => $this->version,
             'path' => $this->path,
@@ -117,9 +72,12 @@ final class ModuleManifest
             'conflicts' => $this->conflicts,
             'provides' => $this->provides,
             'commands' => $this->commands,
+            'routes' => $this->routes,
+            'views' => $this->views,
             'description' => $this->description,
             'stability' => $this->stability,
-        ], $this->extra);
+            'extra' => $this->extra,
+        ];
     }
 
     /** @param array<mixed, mixed> $requires */
@@ -159,6 +117,25 @@ final class ModuleManifest
                 continue;
             }
             $normalized[$signature] = $class;
+        }
+
+        return $normalized;
+    }
+
+    /** @param array<mixed, mixed> $routes */
+    private static function normalizeRoutes(array $routes): array
+    {
+        $normalized = [];
+        $allowed = ['web', 'api'];
+
+        foreach ($routes as $type => $path) {
+            if (!is_string($type) || !in_array($type, $allowed, true)) {
+                continue;
+            }
+            if (!is_string($path) || $path === '') {
+                continue;
+            }
+            $normalized[$type] = $path;
         }
 
         return $normalized;

@@ -6,12 +6,20 @@ namespace VelvetCMS\Core;
 
 use VelvetCMS\Contracts\Module;
 use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
+use VelvetCMS\Core\Tenancy\TenancyState;
 use VelvetCMS\Exceptions\ModuleException;
+use VelvetCMS\Http\AssetServer;
+use VelvetCMS\Http\Routing\RouteFileLoader;
+use VelvetCMS\Http\Routing\Router;
 
 class ModuleManager
 {
     private Application $app;
+    private ModuleArtifactPaths $artifactPaths;
     private VersionRegistry $versionRegistry;
+    private ConfigRepository $configRepository;
+    private TenancyState $tenancyState;
+    private AssetServer $assetServer;
     private string $basePath;
 
     /** @var array<string, Module> */
@@ -25,14 +33,18 @@ class ModuleManager
     public function __construct(Application $app)
     {
         $this->app = $app;
-        $this->versionRegistry = VersionRegistry::instance();
+        $this->artifactPaths = $app->make(ModuleArtifactPaths::class);
+        $this->versionRegistry = $app->make(VersionRegistry::class);
+        $this->configRepository = $app->make(ConfigRepository::class);
+        $this->tenancyState = $app->make(TenancyState::class);
+        $this->assetServer = $app->make(AssetServer::class);
         $this->basePath = $app->basePath();
     }
 
     public function load(): self
     {
         $compiledPath = null;
-        foreach (ModuleArtifactPaths::compiledCandidates($this->basePath) as $candidate) {
+        foreach ($this->artifactPaths->compiledCandidates($this->basePath) as $candidate) {
             if (file_exists($candidate)) {
                 $compiledPath = $candidate;
                 break;
@@ -40,7 +52,6 @@ class ModuleManager
         }
 
         if ($compiledPath === null) {
-            // No compiled manifest, skip module loading
             return $this;
         }
 
@@ -50,10 +61,8 @@ class ModuleManager
             return $this;
         }
 
-        // Register autoloader for all modules (optimized)
         $this->registerAutoloader();
 
-        // Load modules in pre-determined order
         foreach ($compiled['modules'] as $moduleData) {
             if (!is_array($moduleData)) {
                 continue;
@@ -78,13 +87,8 @@ class ModuleManager
     private function loadModule(ModuleManifest $manifest): void
     {
         $name = $manifest->name;
-        $path = $manifest->path;
         $entryClass = $manifest->entry;
-
-        // Resolve absolute path
-        if (!str_starts_with($path, '/')) {
-            $path = $this->basePath . '/' . $path;
-        }
+        $path = $this->resolveManifestPath($manifest);
 
         if (!class_exists($entryClass)) {
             throw new ModuleException("Module '{$name}' entry class not found: {$entryClass}");
@@ -96,12 +100,11 @@ class ModuleManager
             throw new ModuleException("Module '{$name}' must implement " . Module::class);
         }
 
-        // Register module's public assets if available
         $this->registerModuleAssets($module);
 
         $configDir = $path . '/config';
         if (is_dir($configDir)) {
-            ConfigRepository::getInstance()->registerNamespace($name, $configDir);
+            $this->configRepository->registerNamespace($name, $configDir);
         }
 
         $this->modules[$name] = $module;
@@ -118,14 +121,14 @@ class ModuleManager
         $prefix = $module->assetsPrefix();
 
         if ($publicPath && $prefix) {
-            \VelvetCMS\Http\AssetServer::module($prefix, $publicPath);
+            $this->assetServer->registerModule($prefix, $publicPath);
         }
     }
 
     public function registerAutoloader(): void
     {
         $autoloadPath = null;
-        foreach (ModuleArtifactPaths::autoloadCandidates($this->basePath) as $candidate) {
+        foreach ($this->artifactPaths->autoloadCandidates($this->basePath) as $candidate) {
             if (file_exists($candidate)) {
                 $autoloadPath = $candidate;
                 break;
@@ -133,13 +136,11 @@ class ModuleManager
         }
 
         if ($autoloadPath === null) {
-            // Fallback: no compiled autoloader, autoload will fail gracefully
             return;
         }
 
         $mappings = require $autoloadPath;
 
-        // Strict format: require psr-4 key
         if (!isset($mappings['psr-4'])) {
             return;
         }
@@ -147,7 +148,6 @@ class ModuleManager
         $psr4 = $mappings['psr-4'];
         $files = $mappings['files'] ?? [];
 
-        // Load module-specific autoloaders (e.g. vendor/autoload.php)
         foreach ($files as $file) {
             if (file_exists($file)) {
                 require_once $file;
@@ -155,14 +155,11 @@ class ModuleManager
         }
 
         spl_autoload_register(function ($class) use ($psr4) {
-            // Check each namespace mapping
             foreach ($psr4 as $namespace => $path) {
-                // Check if class is in this namespace
                 if (!str_starts_with($class, $namespace)) {
                     continue;
                 }
 
-                // Get relative class name
                 $relativeClass = substr($class, strlen($namespace));
                 $file = $path . '/' . str_replace('\\', '/', $relativeClass) . '.php';
 
@@ -198,12 +195,25 @@ class ModuleManager
         foreach ($this->modules as $name => $module) {
             $this->autoRegisterViews($name);
             $module->boot($this->app);
-            $this->autoLoadRoutes($name);
         }
 
         $this->booted = true;
 
         return $this;
+    }
+
+    public function loadRoutes(): void
+    {
+        foreach (array_keys($this->modules) as $name) {
+            $this->autoLoadRoutes($name);
+        }
+    }
+
+    private function resolveManifestPath(ModuleManifest $manifest): string
+    {
+        return str_starts_with($manifest->path, '/')
+            ? $manifest->path
+            : $this->basePath . '/' . $manifest->path;
     }
 
     private function autoRegisterViews(string $name): void
@@ -213,13 +223,12 @@ class ModuleManager
         }
 
         $manifest = $this->manifests[$name];
-        $path = $manifest->path;
 
-        if (!str_starts_with($path, '/')) {
-            $path = $this->basePath . '/' . $path;
+        if ($manifest->views === null) {
+            return;
         }
 
-        $viewsDir = $path . '/resources/views';
+        $viewsDir = $this->resolveManifestPath($manifest) . '/' . ltrim($manifest->views, '/');
         if (is_dir($viewsDir)) {
             $this->app->get('view')->namespace($name, $viewsDir);
         }
@@ -229,13 +238,8 @@ class ModuleManager
     {
         $manifest = $this->manifests[$name];
 
-        if (($manifest->extra['autoload']['routes'] ?? true) === false) {
+        if ($manifest->routes === []) {
             return;
-        }
-
-        $path = $manifest->path;
-        if (!str_starts_with($path, '/')) {
-            $path = $this->basePath . '/' . $path;
         }
 
         $router = $this->app->has('router') ? $this->app->get('router') : null;
@@ -243,10 +247,21 @@ class ModuleManager
             return;
         }
 
-        foreach (['web.php', 'api.php'] as $routeFile) {
-            $routePath = $path . '/routes/' . $routeFile;
-            if (file_exists($routePath)) {
-                require $routePath;
+        $basePath = $this->resolveManifestPath($manifest);
+        $app = $this->app;
+
+        foreach ($manifest->routes as $type => $relativePath) {
+            $routePath = $basePath . '/' . ltrim($relativePath, '/');
+            if (!file_exists($routePath)) {
+                continue;
+            }
+
+            if ($type === 'api') {
+                $router->group(['prefix' => 'api'], static function (Router $router) use ($app, $routePath): void {
+                    RouteFileLoader::register($routePath, $router, $app);
+                });
+            } else {
+                RouteFileLoader::register($routePath, $router, $app);
             }
         }
     }
@@ -279,29 +294,24 @@ class ModuleManager
     /** @return array<string, array> */
     public function discover(): array
     {
-        $discovered = [];
-
-        // 1. From config
-        $configModules = $this->discoverFromConfig();
-        $discovered = array_merge($discovered, $configModules);
-
-        // 2. From filesystem
-        $fsModules = $this->discoverFromFilesystem();
-        $discovered = array_merge($discovered, $fsModules);
-
-        // 3. From composer
-        $composerModules = $this->discoverFromComposer();
-        $discovered = array_merge($discovered, $composerModules);
-
-        return $discovered;
+        return array_merge(
+            $this->discoverFromConfig(),
+            $this->discoverFromFilesystem(),
+            $this->discoverFromComposer(),
+        );
     }
 
     private function discoverFromConfig(): array
     {
         $modules = [];
-        $config = config('modules', []);
+        $config = $this->modulesConfig();
+        $configuredModules = $config['modules'] ?? [];
 
-        foreach ($config['modules'] ?? [] as $name => $moduleConfig) {
+        if (!is_array($configuredModules)) {
+            return $modules;
+        }
+
+        foreach ($configuredModules as $name => $moduleConfig) {
             if (is_string($moduleConfig)) {
                 $moduleConfig = ['path' => $moduleConfig];
             }
@@ -325,9 +335,9 @@ class ModuleManager
     private function discoverFromFilesystem(): array
     {
         $modules = [];
-        $config = config('modules', []);
+        $config = $this->modulesConfig();
         $paths = $config['paths'] ?? [];
-        $tenantPaths = $this->getTenantModulePaths($config);
+        $tenantPaths = $this->getTenantModulePaths();
         if (!empty($tenantPaths)) {
             $paths = array_merge($paths, $tenantPaths);
         }
@@ -336,7 +346,6 @@ class ModuleManager
         foreach ($paths as $path) {
             $resolvedPath = $this->resolveModulePath($path);
 
-            // Support glob patterns
             if (str_contains($path, '*')) {
                 $matchedPaths = glob($resolvedPath);
                 foreach ($matchedPaths as $matchedPath) {
@@ -368,17 +377,18 @@ class ModuleManager
     }
 
     /** @return string[] */
-    private function getTenantModulePaths(array $config): array
+    private function getTenantModulePaths(): array
     {
-        if (!\VelvetCMS\Core\Tenancy\TenancyManager::isEnabled()) {
+        if (!$this->tenancyState->isEnabled()) {
             return [];
         }
 
-        $tenantId = \VelvetCMS\Core\Tenancy\TenancyManager::currentId();
+        $tenantId = $this->tenancyState->currentId();
         if (!is_string($tenantId) || $tenantId === '') {
             return [];
         }
 
+        $config = $this->modulesConfig();
         $paths = $config['tenant_paths'] ?? [];
         if (is_string($paths)) {
             $paths = [$paths];
@@ -393,6 +403,14 @@ class ModuleManager
         }
 
         return $resolved;
+    }
+
+    /** @return array<string, mixed> */
+    private function modulesConfig(): array
+    {
+        $config = $this->configRepository->get('modules', []);
+
+        return is_array($config) ? $config : [];
     }
 
     private function discoverFromComposer(): array
@@ -451,19 +469,17 @@ class ModuleManager
         return $this->basePath . '/' . $path;
     }
 
-    /** @return array Validation issues */
+    /** @return string[] Validation issues */
     public function validate(string $name, array $manifest, array $availableManifests = []): array
     {
         $issues = [];
 
-        // Check if entry class exists
         $entryClass = $manifest['entry'] ?? null;
         if (!$entryClass) {
             $issues[] = "Module '{$name}' missing 'entry' in manifest";
         }
 
         if ($availableManifests === []) {
-            // $this->manifests contains ModuleManifest objects for already-loaded modules.
             $loaded = [];
             foreach ($this->manifests as $loadedName => $loadedManifest) {
                 $loaded[$loadedName] = $loadedManifest->toArray();
@@ -533,7 +549,6 @@ class ModuleManager
             $requires = $manifest['requires'] ?? [];
 
             foreach ($requires as $dependency => $constraint) {
-                // Only consider module dependencies (not core/php)
                 if ($dependency !== 'core' && $dependency !== 'php' && isset($modules[$dependency])) {
                     $visit($dependency);
                 }

@@ -56,7 +56,7 @@ abstract class BaseModule implements Module
 
     public function description(): string
     {
-        return $this->manifestObject->description ?? ($this->manifest['description'] ?? '');
+        return $this->manifestObject->description ?? '';
     }
 
     public function manifestObject(): ModuleManifest
@@ -84,16 +84,6 @@ abstract class BaseModule implements Module
 
     public function boot(Application $app): void
     {
-    }
-
-    protected function loadRoutesFrom(string $path): void
-    {
-        if (!file_exists($path)) {
-            return;
-        }
-
-        $router = app('router');
-        require $path;
     }
 
     protected function loadViewsFrom(string $path, string $namespace): void
