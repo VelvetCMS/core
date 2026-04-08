@@ -4,20 +4,20 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Integration\Commands;
 
-use PHPUnit\Framework\TestCase;
 use VelvetCMS\Commands\CommandRegistry;
-use VelvetCMS\Tests\Fixtures\Commands\DemoCommand;
+use VelvetCMS\Commands\ListCommand;
+use VelvetCMS\Tests\Support\ApplicationTestCase;
+use VelvetCMS\Tests\Support\Doubles\Commands\DemoCommand;
 
-final class CommandRegistrationEventTest extends TestCase
+final class CommandRegistrationEventTest extends ApplicationTestCase
 {
     public function test_modules_can_register_commands_via_event(): void
     {
-        $app = require base_path('bootstrap/app.php');
-        $app->boot();
+        $app = $this->requireBootstrappedApplication();
 
         $registry = new CommandRegistry();
         $app->instance(CommandRegistry::class, $registry);
-        $app->alias('commands', CommandRegistry::class);
+        $app->alias(CommandRegistry::class, 'commands');
 
         $events = $app->make('events');
 
@@ -31,5 +31,24 @@ final class CommandRegistrationEventTest extends TestCase
 
         $this->assertSame($registry, $received);
         $this->assertTrue($registry->has('demo:test'));
+    }
+
+    public function test_container_resolves_list_command_with_bound_registry(): void
+    {
+        $app = $this->requireBootstrappedApplication();
+
+        $registry = new CommandRegistry();
+        $registry->register('version', \VelvetCMS\Commands\VersionCommand::class);
+        $registry->register('list', ListCommand::class);
+
+        $app->instance(CommandRegistry::class, $registry);
+        $app->alias(CommandRegistry::class, 'commands');
+
+        $command = $app->make(ListCommand::class);
+
+        [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());
+
+        $this->assertSame(0, $exitCode, $output);
+        $this->assertStringContainsString('version', $output);
     }
 }

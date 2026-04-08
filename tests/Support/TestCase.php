@@ -5,7 +5,13 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Support;
 
 use PHPUnit\Framework\TestCase as BaseTestCase;
+use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ConfigRepository;
+use VelvetCMS\Core\Paths;
+use VelvetCMS\Core\Tenancy\TenancyState;
 use VelvetCMS\Drivers\Cache\FileCache;
+use VelvetCMS\Http\AssetServer;
+use VelvetCMS\Validation\ValidationExtensionRegistry;
 
 /**
  * Base test case for rewritten suite.
@@ -25,24 +31,120 @@ abstract class TestCase extends BaseTestCase
         $this->tmpDir = sys_get_temp_dir() . '/velvet-tests-' . bin2hex(random_bytes(6));
         $this->mkdir($this->tmpDir);
 
+        $this->prepareFilesystem();
+        $this->setBasePathOverride($this->basePathRoot());
+        $this->resetFrameworkState();
+        $this->initializeApplication();
+
         $this->seedConfig();
     }
 
     protected function tearDown(): void
     {
-        $this->rrmdir($this->tmpDir);
+        $this->resetFrameworkState();
+        $this->setBasePathOverride($this->frameworkRoot());
         $this->resetGlobals();
 
-        if (function_exists('config')) {
-            foreach (['content.drivers.file.index.json.path', 'content.drivers.file.index.sqlite.path'] as $key) {
-                $indexPath = config($key);
-                if (is_string($indexPath) && file_exists($indexPath)) {
-                    @unlink($indexPath);
-                }
-            }
-        }
+        $this->rrmdir($this->tmpDir);
 
         parent::tearDown();
+    }
+
+    protected function prepareFilesystem(): void
+    {
+    }
+
+    protected function frameworkRoot(string $path = ''): string
+    {
+        $root = dirname(__DIR__, 2);
+
+        return $path === '' ? $root : $root . DIRECTORY_SEPARATOR . ltrim($path, '/\\');
+    }
+
+    protected function basePathRoot(): string
+    {
+        return $this->frameworkRoot();
+    }
+
+    protected function configRoot(): string
+    {
+        return $this->frameworkRoot('config');
+    }
+
+    protected function userConfigRoot(): string
+    {
+        return $this->tmpDir . '/user/config';
+    }
+
+    protected function tenantConfigRoot(): ?string
+    {
+        return null;
+    }
+
+    protected function initializeApplication(): void
+    {
+        new Application($this->basePathRoot(), $this->buildConfigRepository(), $this->buildTenancyState());
+    }
+
+    protected function buildConfigRepository(): ConfigRepository
+    {
+        $this->mkdir($this->userConfigRoot());
+
+        $tenantConfigPath = $this->tenantConfigRoot();
+
+        if ($tenantConfigPath === null) {
+            $tenantConfigPath = function (): ?string {
+                if (!Application::hasInstance()) {
+                    return null;
+                }
+
+                /** @var TenancyState $state */
+                $state = Application::getInstance()->make(TenancyState::class);
+                if (!$state->isEnabled() || $state->currentId() === null) {
+                    return null;
+                }
+
+                $root = (string) ($state->config()['paths']['user_root'] ?? 'user/tenants');
+                $tenantRoot = Paths::isAbsolute($root)
+                    ? rtrim($root, '/\\')
+                    : Paths::join($this->basePathRoot(), trim($root, '/\\'));
+
+                return Paths::join(Paths::join($tenantRoot, (string) $state->currentId()), 'config');
+            };
+        }
+
+        return new ConfigRepository(
+            $this->configRoot(),
+            null,
+            $this->userConfigRoot(),
+            $tenantConfigPath,
+        );
+    }
+
+    protected function buildTenancyState(): TenancyState
+    {
+        return TenancyState::fromConfigFile($this->configRoot() . DIRECTORY_SEPARATOR . 'tenancy.php');
+    }
+
+    protected function resetFrameworkState(): void
+    {
+        if (Application::hasInstance()) {
+            Application::getInstance()->make(ValidationExtensionRegistry::class)->clear();
+            Application::getInstance()->make(AssetServer::class)->reset();
+        }
+
+        Application::clearInstance();
+
+        unset($GLOBALS['__velvet_request']);
+        $_SESSION = [];
+    }
+
+    protected function setBasePathOverride(string $path): void
+    {
+        $path = rtrim($path, '/\\');
+        $_ENV['VELVET_BASE_PATH'] = $path;
+        $_SERVER['VELVET_BASE_PATH'] = $path;
+        putenv('VELVET_BASE_PATH=' . $path);
     }
 
     /** Reset superglobals that Request::capture reads to avoid cross-test leakage. */
@@ -61,12 +163,19 @@ abstract class TestCase extends BaseTestCase
         $cachePath = $this->tmpDir . '/cache';
         $contentPath = $this->tmpDir . '/content/pages';
         $viewPath = $this->tmpDir . '/views';
+        $logPath = $this->tmpDir . '/logs/velvet.log';
 
         $this->mkdir($cachePath);
+        $this->mkdir($cachePath . '/views');
         $this->mkdir($contentPath);
         $this->mkdir($viewPath);
+        $this->mkdir(dirname($logPath));
 
-        config([
+        /** @var ConfigRepository $repository */
+        $repository = Application::getInstance()->make(ConfigRepository::class);
+
+        foreach ([
+            'app.env' => 'testing',
             'app.debug' => true,
             'cache.default' => 'file',
             'cache.drivers.file.path' => $cachePath,
@@ -76,8 +185,11 @@ abstract class TestCase extends BaseTestCase
             'content.drivers.file.index.json.path' => $cachePath . '/page-index.json',
             'content.drivers.file.index.sqlite.path' => $cachePath . '/page-index.sqlite',
             'view.path' => $viewPath,
-            'view.compiled' => 'cache/views',
-        ]);
+            'view.compiled' => $cachePath . '/views',
+            'logging.path' => $logPath,
+        ] as $key => $value) {
+            $repository->persist($key, $value);
+        }
     }
 
     protected function pageIndexJsonPath(): string
@@ -117,6 +229,38 @@ abstract class TestCase extends BaseTestCase
     {
         if (!is_dir($path)) {
             mkdir($path, 0777, true);
+        }
+    }
+
+    protected function copyFile(string $source, string $destination): void
+    {
+        $this->mkdir(dirname($destination));
+        copy($source, $destination);
+    }
+
+    protected function copyDirectory(string $source, string $destination): void
+    {
+        $this->mkdir($destination);
+
+        $items = scandir($source);
+        if ($items === false) {
+            return;
+        }
+
+        foreach ($items as $item) {
+            if ($item === '.' || $item === '..') {
+                continue;
+            }
+
+            $sourcePath = $source . DIRECTORY_SEPARATOR . $item;
+            $destinationPath = $destination . DIRECTORY_SEPARATOR . $item;
+
+            if (is_dir($sourcePath)) {
+                $this->copyDirectory($sourcePath, $destinationPath);
+                continue;
+            }
+
+            $this->copyFile($sourcePath, $destinationPath);
         }
     }
 

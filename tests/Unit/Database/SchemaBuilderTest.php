@@ -15,13 +15,14 @@ final class SchemaBuilderTest extends TestCase
     use CreatesTestDatabase;
 
     private Connection $connection;
+    private Schema $schema;
 
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->connection = $this->makeSqliteConnection('schema-test');
-        Schema::setConnection($this->connection);
+        $this->schema = new Schema($this->connection);
     }
 
     // === Blueprint Tests ===
@@ -187,7 +188,7 @@ final class SchemaBuilderTest extends TestCase
 
     public function test_schema_create_table(): void
     {
-        Schema::create('articles', function (Blueprint $table) {
+        $this->schema->create('articles', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->text('body');
@@ -199,34 +200,33 @@ final class SchemaBuilderTest extends TestCase
 
     public function test_schema_drop_table(): void
     {
-        Schema::create('to_drop', function (Blueprint $table) {
+        $this->schema->create('to_drop', function (Blueprint $table) {
             $table->id();
         });
 
         $this->assertTrue($this->connection->tableExists('to_drop'));
 
-        Schema::drop('to_drop');
+        $this->schema->drop('to_drop');
 
         $this->assertFalse($this->connection->tableExists('to_drop'));
     }
 
     public function test_schema_drop_if_exists(): void
     {
-        // Should not throw if table doesn't exist
-        Schema::dropIfExists('nonexistent_table');
-        $this->assertTrue(true);
+        $this->schema->dropIfExists('nonexistent_table');
+        $this->assertFalse($this->connection->tableExists('nonexistent_table'));
 
-        Schema::create('exists_to_drop', function (Blueprint $table) {
+        $this->schema->create('exists_to_drop', function (Blueprint $table) {
             $table->id();
         });
 
-        Schema::dropIfExists('exists_to_drop');
+        $this->schema->dropIfExists('exists_to_drop');
         $this->assertFalse($this->connection->tableExists('exists_to_drop'));
     }
 
     public function test_schema_creates_table_with_indexes(): void
     {
-        Schema::create('indexed_table', function (Blueprint $table) {
+        $this->schema->create('indexed_table', function (Blueprint $table) {
             $table->id();
             $table->string('email')->unique();
             $table->string('slug')->index();
@@ -237,12 +237,12 @@ final class SchemaBuilderTest extends TestCase
 
     public function test_schema_creates_table_with_foreign_key(): void
     {
-        Schema::create('authors', function (Blueprint $table) {
+        $this->schema->create('authors', function (Blueprint $table) {
             $table->id();
             $table->string('name');
         });
 
-        Schema::create('books', function (Blueprint $table) {
+        $this->schema->create('books', function (Blueprint $table) {
             $table->id();
             $table->string('title');
             $table->bigInteger('author_id');
@@ -254,7 +254,7 @@ final class SchemaBuilderTest extends TestCase
 
     public function test_schema_with_nullable_and_defaults(): void
     {
-        Schema::create('settings', function (Blueprint $table) {
+        $this->schema->create('settings', function (Blueprint $table) {
             $table->id();
             $table->string('key');
             $table->text('value')->nullable();

@@ -6,8 +6,6 @@ namespace VelvetCMS\Tests\Unit\Commands\Concerns;
 
 use VelvetCMS\Commands\Command;
 use VelvetCMS\Commands\Concerns\InteractsWithTenancy;
-use VelvetCMS\Core\Tenancy\TenancyManager;
-use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
@@ -58,7 +56,7 @@ final class InteractsWithTenancyTest extends TestCase
     public function test_falls_back_to_current_tenant(): void
     {
         $this->setTenancyConfig(['enabled' => true, 'paths' => ['user_root' => 'user/tenants']]);
-        TenancyManager::setCurrent(new TenantContext('current-one'));
+        $this->setCurrentTenant('current-one');
 
         $command = $this->makeTenantCommand([], []);
 

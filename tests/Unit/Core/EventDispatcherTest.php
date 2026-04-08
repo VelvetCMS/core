@@ -62,9 +62,9 @@ final class EventDispatcherTest extends TestCase
 
     public function test_dispatch_without_listeners_does_not_error(): void
     {
-        // Should not throw
         $this->events->dispatch('no.listeners', 'data');
-        $this->assertTrue(true);
+
+        $this->assertSame([], $this->events->getEvents());
     }
 
     public function test_has_listeners_returns_true_when_registered(): void
@@ -105,7 +105,8 @@ final class EventDispatcherTest extends TestCase
     public function test_forget_nonexistent_event_does_not_error(): void
     {
         $this->events->forget('does.not.exist');
-        $this->assertTrue(true);
+
+        $this->assertSame([], $this->events->getEvents());
     }
 
     public function test_get_events_returns_registered_event_names(): void

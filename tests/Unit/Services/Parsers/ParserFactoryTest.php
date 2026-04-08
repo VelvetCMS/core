@@ -6,7 +6,6 @@ namespace VelvetCMS\Tests\Unit\Services\Parsers;
 
 use VelvetCMS\Services\Parsers\CommonMarkParser;
 use VelvetCMS\Services\Parsers\HtmlParser;
-use VelvetCMS\Services\Parsers\ParsedownParser;
 use VelvetCMS\Services\Parsers\ParserFactory;
 use VelvetCMS\Tests\Support\TestCase;
 
@@ -24,18 +23,6 @@ final class ParserFactoryTest extends TestCase
     {
         $parser = $this->factory->make('commonmark');
         $this->assertInstanceOf(CommonMarkParser::class, $parser);
-    }
-
-    public function test_creates_parsedown_parser_if_available(): void
-    {
-        // Parsedown might not be installed in the dev environment by default
-        // or it might be. We'll check if the class exists first.
-        if (!class_exists('Parsedown')) {
-            $this->markTestSkipped('Parsedown not installed.');
-        }
-
-        $parser = $this->factory->make('parsedown');
-        $this->assertInstanceOf(ParsedownParser::class, $parser);
     }
 
     public function test_creates_html_parser(): void

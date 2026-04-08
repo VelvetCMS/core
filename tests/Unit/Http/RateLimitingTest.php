@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Http;
 
 use VelvetCMS\Contracts\CacheDriver;
+use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Http\Middleware\ThrottleRequests;
 use VelvetCMS\Http\RateLimiting\Limit;
 use VelvetCMS\Http\RateLimiting\RateLimiter;
@@ -195,7 +197,7 @@ final class RateLimitingTest extends TestCase
 
     public function test_middleware_allows_under_limit(): void
     {
-        $middleware = new ThrottleRequests($this->rateLimiter);
+        $middleware = $this->makeMiddleware();
         $request = Request::capture();
         $next = fn () => Response::html('ok');
 
@@ -208,7 +210,7 @@ final class RateLimitingTest extends TestCase
 
     public function test_middleware_blocks_over_limit(): void
     {
-        $middleware = new ThrottleRequests($this->rateLimiter);
+        $middleware = $this->makeMiddleware();
         $request = Request::capture();
         $next = fn () => Response::html('ok');
 
@@ -223,7 +225,7 @@ final class RateLimitingTest extends TestCase
     public function test_middleware_uses_named_limiter(): void
     {
         $this->rateLimiter->for('generous', Limit::perMinute(100));
-        $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('generous');
+        $middleware = $this->makeMiddleware()->setLimiter('generous');
 
         $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
@@ -232,7 +234,7 @@ final class RateLimitingTest extends TestCase
 
     public function test_middleware_uses_inline_limit(): void
     {
-        $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('50,2');
+        $middleware = $this->makeMiddleware()->setLimiter('50,2');
 
         $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
@@ -243,7 +245,7 @@ final class RateLimitingTest extends TestCase
     {
         $rateLimiter = new RateLimiter($this->cache);
         $rateLimiter->whitelist(['127.0.0.1', 'unknown']);
-        $middleware = new ThrottleRequests($rateLimiter);
+        $middleware = $this->makeMiddleware($rateLimiter);
 
         for ($i = 0; $i < 10; $i++) {
             $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
@@ -254,7 +256,7 @@ final class RateLimitingTest extends TestCase
     public function test_middleware_disabled_allows_all(): void
     {
         config(['http.rate_limit.enabled' => false]);
-        $middleware = new ThrottleRequests($this->rateLimiter);
+        $middleware = $this->makeMiddleware();
 
         for ($i = 0; $i < 10; $i++) {
             $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
@@ -265,7 +267,7 @@ final class RateLimitingTest extends TestCase
     public function test_middleware_unlimited_limiter(): void
     {
         $this->rateLimiter->for('unlimited', Limit::none());
-        $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('unlimited');
+        $middleware = $this->makeMiddleware()->setLimiter('unlimited');
 
         for ($i = 0; $i < 10; $i++) {
             $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
@@ -276,10 +278,18 @@ final class RateLimitingTest extends TestCase
     public function test_middleware_dynamic_limiter(): void
     {
         $this->rateLimiter->for('dynamic', fn () => Limit::perMinute(5));
-        $middleware = (new ThrottleRequests($this->rateLimiter))->setLimiter('dynamic');
+        $middleware = $this->makeMiddleware()->setLimiter('dynamic');
 
         $response = $middleware->handle(Request::capture(), fn () => Response::html('ok'));
 
         $this->assertSame('5', $response->getHeader('X-RateLimit-Limit'));
+    }
+
+    private function makeMiddleware(?RateLimiter $rateLimiter = null): ThrottleRequests
+    {
+        return new ThrottleRequests(
+            $rateLimiter ?? $this->rateLimiter,
+            Application::getInstance()->make(ConfigRepository::class),
+        );
     }
 }

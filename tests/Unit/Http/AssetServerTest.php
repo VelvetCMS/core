@@ -22,14 +22,14 @@ final class AssetServerTest extends TestCase
         file_put_contents($userPath . '/assets/css/app.css', 'body { color: red; }');
         file_put_contents($userPath . '/assets/js/app.js', 'console.log("ok");');
 
-        AssetServer::init($userPath);
+        app(AssetServer::class)->initialize($userPath);
     }
 
     public function test_serves_user_assets_with_cache_headers(): void
     {
         $request = $this->makeRequest('GET', '/assets/css/app.css');
 
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(200, $response->getStatus());
@@ -42,7 +42,7 @@ final class AssetServerTest extends TestCase
     {
         $request = $this->makeRequest('GET', '/assets/css/app.exe');
 
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $this->assertNull($response);
     }
@@ -53,11 +53,11 @@ final class AssetServerTest extends TestCase
         $this->mkdir($modulePublic);
         file_put_contents($modulePublic . '/app.js', 'console.log("admin");');
 
-        AssetServer::module('admin', $modulePublic);
+        app(AssetServer::class)->registerModule('admin', $modulePublic);
 
         $request = $this->makeRequest('GET', '/assets/admin/app.js');
 
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(200, $response->getStatus());
@@ -67,13 +67,13 @@ final class AssetServerTest extends TestCase
     public function test_returns_not_modified_when_etag_matches(): void
     {
         $request = $this->makeRequest('GET', '/assets/js/app.js');
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $etag = $response?->getHeader('ETag');
         $this->assertNotEmpty($etag);
 
         $request = $this->makeRequest('GET', '/assets/js/app.js', [], ['If-None-Match' => $etag]);
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(304, $response->getStatus());
@@ -87,8 +87,16 @@ final class AssetServerTest extends TestCase
 
         $request = $this->makeRequest('GET', '/assets/css/../outside.txt');
 
-        $response = AssetServer::serve($request);
+        $response = $this->assetServer()->serve($request);
 
         $this->assertNull($response);
+    }
+
+    private function assetServer(): AssetServer
+    {
+        /** @var AssetServer $assetServer */
+        $assetServer = app(AssetServer::class);
+
+        return $assetServer;
     }
 }

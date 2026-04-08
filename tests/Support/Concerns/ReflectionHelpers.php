@@ -38,12 +38,30 @@ trait ReflectionHelpers
 
     /**
      * Invoke a private or protected method and return its result.
+     *
+     * @param object|class-string $target  Object instance or class name (for static methods).
      */
-    protected function callPrivateMethod(object $target, string $method, array $args = []): mixed
+    protected function callPrivateMethod(object|string $target, string $method, array $args = []): mixed
     {
         $ref = new ReflectionClass($target);
-        $m = $ref->getMethod($method);
+        $reflectionMethod = $ref->getMethod($method);
 
-        return $m->invokeArgs($target, $args);
+        return $reflectionMethod->invokeArgs(is_object($target) ? $target : null, $args);
+    }
+
+    /**
+     * Instantiate an object without running its constructor.
+     *
+     * @template TObject of object
+     *
+     * @param class-string<TObject> $class
+     *
+     * @return TObject
+     */
+    protected function instantiateWithoutConstructor(string $class): object
+    {
+        $ref = new ReflectionClass($class);
+
+        return $ref->newInstanceWithoutConstructor();
     }
 }

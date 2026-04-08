@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Core;
 
 use VelvetCMS\Core\Application;
-use VelvetCMS\Core\BaseModule;
 use VelvetCMS\Core\ModuleManifest;
+use VelvetCMS\Services\ViewEngine;
+use VelvetCMS\Tests\Support\Concerns\WritesTestFiles;
+use VelvetCMS\Tests\Support\Doubles\Modules\InspectableModule;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class BaseModuleTest extends TestCase
 {
+    use WritesTestFiles;
+
     private string $modulePath;
 
     protected function setUp(): void
@@ -21,18 +25,18 @@ final class BaseModuleTest extends TestCase
         $this->mkdir($this->modulePath);
     }
 
-    private function createModule(array $manifestData = []): TestModule
+    private function createModule(array $manifestData = []): InspectableModule
     {
         $data = array_merge([
             'name' => 'test-module',
             'version' => '1.0.0',
             'path' => $this->modulePath,
-            'entry' => TestModule::class,
+            'entry' => InspectableModule::class,
             'description' => 'Test module description',
         ], $manifestData);
 
         $manifest = ModuleManifest::fromArray($data['name'], $data);
-        return new TestModule($this->modulePath, $manifest);
+        return new InspectableModule($this->modulePath, $manifest);
     }
 
     // === Basic Properties ===
@@ -61,11 +65,11 @@ final class BaseModuleTest extends TestCase
             name: 'test',
             version: '1.0.0',
             path: $this->modulePath,
-            entry: TestModule::class,
+            entry: InspectableModule::class,
             enabled: true,
             description: null,
         );
-        $module = new TestModule($this->modulePath, $manifest);
+        $module = new InspectableModule($this->modulePath, $manifest);
 
         $this->assertSame('', $module->description());
     }
@@ -94,9 +98,9 @@ final class BaseModuleTest extends TestCase
     {
         $manifest = ModuleManifest::fromArray('test', [
             'path' => $this->modulePath . '/',  // With trailing slash
-            'entry' => TestModule::class,
+            'entry' => InspectableModule::class,
         ]);
-        $module = new TestModule($this->modulePath . '/', $manifest);
+        $module = new InspectableModule($this->modulePath . '/', $manifest);
 
         // Should not double slashes
         $this->assertStringNotContainsString('//', $module->path('src'));
@@ -164,7 +168,7 @@ final class BaseModuleTest extends TestCase
     public function test_manifest_config_returns_extra_field(): void
     {
         $module = $this->createModule([
-            'custom_setting' => 'custom_value',
+            'extra' => ['custom_setting' => 'custom_value'],
         ]);
 
         $this->assertSame('custom_value', $module->manifestConfig('custom_setting'));
@@ -209,68 +213,54 @@ final class BaseModuleTest extends TestCase
     public function test_load_views_from_registers_namespace(): void
     {
         $viewsPath = $this->modulePath . '/resources/views';
-        $this->mkdir($viewsPath);
-        file_put_contents($viewsPath . '/index.velvet.php', 'Module View');
+        $this->writeFile($viewsPath . '/index.velvet.php', 'Module View');
 
-        // Create view engine
         $app = new Application($this->tmpDir);
-        $viewEngine = new \VelvetCMS\Services\ViewEngine(
+        $viewEngine = new ViewEngine(
             $this->tmpDir . '/views',
             $this->tmpDir . '/cache/views'
         );
         $app->instance('view', $viewEngine);
         Application::setInstance($app);
 
-        $module = $this->createModule();
-        $module->testLoadViewsFrom($viewsPath, 'testmod');
+        try {
+            $module = $this->createModule();
+            $module->exposeLoadViewsFrom($viewsPath, 'testmod');
 
-        $output = $viewEngine->render('testmod::index');
-        $this->assertSame('Module View', $output);
-
-        Application::clearInstance();
+            $output = $viewEngine->render('testmod::index');
+            $this->assertSame('Module View', $output);
+        } finally {
+            Application::clearInstance();
+        }
     }
 
     public function test_load_views_from_handles_missing_dir(): void
     {
         $app = new Application($this->tmpDir);
+        $viewEngine = new ViewEngine(
+            $this->tmpDir . '/views',
+            $this->tmpDir . '/cache/views'
+        );
+        $app->instance('view', $viewEngine);
         Application::setInstance($app);
 
+        try {
+            $module = $this->createModule();
+            $module->exposeLoadViewsFrom('/nonexistent/views', 'test');
+
+            $this->assertFalse($viewEngine->exists('test::index'));
+        } finally {
+            Application::clearInstance();
+        }
+    }
+
+    public function test_load_migrations_from_registers_custom_path(): void
+    {
         $module = $this->createModule();
+        $customPath = $this->modulePath . '/custom-migrations';
 
-        // Should not throw
-        $module->testLoadViewsFrom('/nonexistent/views', 'test');
+        $module->exposeLoadMigrationsFrom($customPath);
 
-        $this->assertTrue(true);
-        Application::clearInstance();
-    }
-}
-
-/**
- * Concrete test implementation of BaseModule.
- */
-class TestModule extends BaseModule
-{
-    public bool $registerCalled = false;
-    public bool $bootCalled = false;
-
-    public function register(Application $app): void
-    {
-        $this->registerCalled = true;
-    }
-
-    public function boot(Application $app): void
-    {
-        $this->bootCalled = true;
-    }
-
-    // Expose protected methods for testing
-    public function testLoadViewsFrom(string $path, string $namespace): void
-    {
-        $this->loadViewsFrom($path, $namespace);
-    }
-
-    public function testLoadMigrationsFrom(string $path): void
-    {
-        $this->loadMigrationsFrom($path);
+        $this->assertContains($customPath, $module->getMigrationPaths());
     }
 }

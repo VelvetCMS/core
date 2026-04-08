@@ -9,6 +9,8 @@ use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 use VelvetCMS\Http\Routing\Router;
+use VelvetCMS\Tests\Support\Doubles\Http\RequestLifecycleTestController;
+use VelvetCMS\Tests\Support\Doubles\Http\RequestLifecycleTestService;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class RequestLifecycleTest extends TestCase
@@ -27,127 +29,79 @@ final class RequestLifecycleTest extends TestCase
 
         $this->router = new Router($events);
         $this->router->setApp($this->app);
-
-        // Reset server variables
-        $_SERVER['REQUEST_METHOD'] = 'GET';
-        $_SERVER['REQUEST_URI'] = '/';
-        $_SERVER['HTTP_HOST'] = 'localhost';
     }
 
-    public function testBasicGetRequestReturnsResponse(): void
+    public function test_basic_get_request_returns_response(): void
     {
         $this->router->get('/', function (Request $request) {
             return Response::html('<h1>Home</h1>');
         });
 
-        $_SERVER['REQUEST_URI'] = '/';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/'));
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(200, $response->getStatus());
         $this->assertSame('<h1>Home</h1>', $response->getContent());
     }
 
-    public function testRouteWithParameters(): void
+    public function test_route_with_parameters(): void
     {
         $this->router->get('/user/{id}', function (Request $request, string $id) {
             return Response::json(['user_id' => $id]);
         });
 
-        $_SERVER['REQUEST_URI'] = '/user/123';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/user/123'));
 
         $this->assertSame(200, $response->getStatus());
         $this->assertStringContainsString('"user_id":"123"', $response->getContent());
     }
 
-    public function testControllerActionWithAutowiring(): void
+    public function test_controller_action_with_autowiring(): void
     {
-        // Register a concrete test service
-        $this->app->singleton(TestService::class, fn () => new TestService());
+        $this->app->singleton(RequestLifecycleTestService::class, fn () => new RequestLifecycleTestService());
 
-        $this->router->get('/test', [TestController::class, 'index']);
+        $this->router->get('/test', [RequestLifecycleTestController::class, 'index']);
 
-        $_SERVER['REQUEST_URI'] = '/test';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/test'));
 
         $this->assertSame(200, $response->getStatus());
         $this->assertStringContainsString('Service injected!', $response->getContent());
     }
 
-    public function test404ResponseForUnmatchedRoute(): void
+    public function test_404_response_for_unmatched_route(): void
     {
         $this->router->get('/exists', function (Request $request) {
             return Response::html('Found');
         });
 
-        $_SERVER['REQUEST_URI'] = '/does-not-exist';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/does-not-exist'));
 
         $this->assertSame(404, $response->getStatus());
     }
 
-    public function testStringResponseConvertedToHtmlResponse(): void
+    public function test_string_response_converted_to_html_response(): void
     {
         $this->router->get('/string', function (Request $request) {
             return 'Plain string response';
         });
 
-        $_SERVER['REQUEST_URI'] = '/string';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/string'));
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(200, $response->getStatus());
         $this->assertSame('Plain string response', $response->getContent());
     }
 
-    public function testArrayResponseConvertedToJsonResponse(): void
+    public function test_array_response_converted_to_json_response(): void
     {
         $this->router->get('/array', function (Request $request) {
             return ['status' => 'ok', 'data' => [1, 2, 3]];
         });
 
-        $_SERVER['REQUEST_URI'] = '/array';
-        $request = Request::capture();
-
-        $response = $this->router->dispatch($request);
+        $response = $this->router->dispatch($this->makeRequest('GET', '/array'));
 
         $this->assertInstanceOf(Response::class, $response);
         $this->assertSame(200, $response->getStatus());
         $this->assertStringContainsString('"status":"ok"', $response->getContent());
-    }
-}
-
-// Test service for autowiring
-class TestService
-{
-    public function getMessage(): string
-    {
-        return 'Service injected!';
-    }
-}
-
-// Test controller for autowiring
-class TestController
-{
-    public function __construct(
-        private TestService $service
-    ) {
-    }
-
-    public function index(Request $request): Response
-    {
-        $message = $this->service->getMessage();
-        return Response::html("<h1>{$message}</h1>");
     }
 }

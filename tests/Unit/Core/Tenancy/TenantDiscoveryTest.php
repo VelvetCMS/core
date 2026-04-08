@@ -41,7 +41,7 @@ final class TenantDiscoveryTest extends TestCase
 
     public function test_discovers_tenant_directories_sorted(): void
     {
-        $tenants = TenantDiscovery::discoverTenantIds();
+        $tenants = app(TenantDiscovery::class)->discoverTenantIds();
 
         $this->assertSame(['alpha', 'beta'], $tenants);
     }

@@ -10,17 +10,7 @@ $_ENV['APP_ENV'] = 'testing';
 $_ENV['APP_DEBUG'] = 'true';
 $_ENV['CACHE_DRIVER'] = 'file';
 
-// Define base path for tests
-define('VELVET_BASE_PATH', dirname(__DIR__));
-
-// Create test storage directories if they don't exist
-$testDirs = [
-    __DIR__ . '/fixtures/content/pages',
-    __DIR__ . '/fixtures/storage/cache',
-];
-
-foreach ($testDirs as $dir) {
-    if (!is_dir($dir)) {
-        mkdir($dir, 0755, true);
-    }
-}
+// Default test base path. Individual tests may override this to sandbox helper paths.
+$_ENV['VELVET_BASE_PATH'] = dirname(__DIR__);
+$_SERVER['VELVET_BASE_PATH'] = dirname(__DIR__);
+putenv('VELVET_BASE_PATH=' . dirname(__DIR__));

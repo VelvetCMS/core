@@ -5,8 +5,6 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
 use VelvetCMS\Core\Tenancy\ModuleArtifactPaths;
-use VelvetCMS\Core\Tenancy\TenancyManager;
-use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
@@ -22,10 +20,11 @@ final class ModuleArtifactPathsTest extends TestCase
     public function test_uses_global_paths_when_tenancy_disabled(): void
     {
         $this->setTenancyConfig(['enabled' => false]);
+        $artifactPaths = app(ModuleArtifactPaths::class);
 
-        $this->assertSame(base_path('storage/modules.json'), ModuleArtifactPaths::statePath());
-        $this->assertSame(base_path('storage/modules-compiled.json'), ModuleArtifactPaths::compiledPath());
-        $this->assertSame(base_path('storage/modules-autoload.php'), ModuleArtifactPaths::autoloadPath());
+        $this->assertSame(base_path('storage/modules.json'), $artifactPaths->statePath());
+        $this->assertSame(base_path('storage/modules-compiled.json'), $artifactPaths->compiledPath());
+        $this->assertSame(base_path('storage/modules-autoload.php'), $artifactPaths->autoloadPath());
     }
 
     public function test_uses_tenant_scoped_paths_when_enabled(): void
@@ -37,11 +36,12 @@ final class ModuleArtifactPathsTest extends TestCase
             ],
         ]);
 
-        TenancyManager::setCurrent(new TenantContext('tenant-a'));
+        $this->setCurrentTenant('tenant-a');
+        $artifactPaths = app(ModuleArtifactPaths::class);
 
-        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules.json'), ModuleArtifactPaths::statePath());
-        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules-compiled.json'), ModuleArtifactPaths::compiledPath());
-        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules-autoload.php'), ModuleArtifactPaths::autoloadPath());
+        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules.json'), $artifactPaths->statePath());
+        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules-compiled.json'), $artifactPaths->compiledPath());
+        $this->assertSame(base_path('storage/tenants/tenant-a/modules/modules-autoload.php'), $artifactPaths->autoloadPath());
     }
 
     public function test_compiled_candidates_are_tenant_first_then_global(): void
@@ -53,9 +53,9 @@ final class ModuleArtifactPathsTest extends TestCase
             ],
         ]);
 
-        TenancyManager::setCurrent(new TenantContext('tenant-b'));
+        $this->setCurrentTenant('tenant-b');
 
-        $candidates = ModuleArtifactPaths::compiledCandidates();
+        $candidates = app(ModuleArtifactPaths::class)->compiledCandidates();
 
         $this->assertSame(base_path('storage/tenants/tenant-b/modules/modules-compiled.json'), $candidates[0]);
         $this->assertSame(base_path('storage/modules-compiled.json'), $candidates[1]);

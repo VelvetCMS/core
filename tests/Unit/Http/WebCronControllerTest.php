@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Http;
 
 use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Http\Controllers\WebCronController;
+use VelvetCMS\Http\RateLimiting\RateLimiter;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Scheduling\Schedule;
 use VelvetCMS\Tests\Support\TestCase;
@@ -14,6 +16,8 @@ final class WebCronControllerTest extends TestCase
 {
     public function test_denies_invalid_token(): void
     {
+        $app = new Application($this->tmpDir);
+
         config([
             'app.cron_token' => 'secret',
             'app.cron_allowed_ips' => [],
@@ -21,7 +25,7 @@ final class WebCronControllerTest extends TestCase
         ]);
         $_GET = [];
 
-        $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
+        $controller = $this->makeController($app, new Schedule());
         $response = $controller->handle(Request::capture());
 
         $this->assertSame(403, $response->getStatus());
@@ -30,6 +34,8 @@ final class WebCronControllerTest extends TestCase
 
     public function test_runs_due_tasks_and_outputs_count(): void
     {
+        $app = new Application($this->tmpDir);
+
         config([
             'app.cron_token' => 'secret',
             'app.cron_allowed_ips' => [],
@@ -47,7 +53,7 @@ final class WebCronControllerTest extends TestCase
             $ran++;
         });
 
-        $controller = new WebCronController(new Application($this->tmpDir), $schedule);
+        $controller = $this->makeController($app, $schedule);
         $response = $controller->handle(Request::capture());
 
         $this->assertSame(2, $ran);
@@ -56,6 +62,8 @@ final class WebCronControllerTest extends TestCase
 
     public function test_denies_ip_not_on_allowlist(): void
     {
+        $app = new Application($this->tmpDir);
+
         config([
             'app.cron_token' => 'secret',
             'app.cron_allowed_ips' => ['10.0.0.1'],
@@ -64,7 +72,7 @@ final class WebCronControllerTest extends TestCase
         $_GET = ['token' => 'secret'];
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
-        $controller = new WebCronController(new Application($this->tmpDir), new Schedule());
+        $controller = $this->makeController($app, new Schedule());
         $response = $controller->handle(Request::capture());
 
         $this->assertSame(403, $response->getStatus());
@@ -73,6 +81,8 @@ final class WebCronControllerTest extends TestCase
 
     public function test_accepts_valid_signed_url_when_enabled(): void
     {
+        $app = new Application($this->tmpDir);
+
         $token = 'secret';
         $expires = time() + 120;
         $signature = hash_hmac('sha256', (string) $expires, $token);
@@ -96,7 +106,7 @@ final class WebCronControllerTest extends TestCase
             $ran++;
         });
 
-        $controller = new WebCronController(new Application($this->tmpDir), $schedule);
+        $controller = $this->makeController($app, $schedule);
         $response = $controller->handle(Request::capture());
 
         $this->assertSame(1, $ran);
@@ -105,6 +115,8 @@ final class WebCronControllerTest extends TestCase
 
     public function test_rate_limit_blocks_when_exceeded(): void
     {
+        $app = new Application($this->tmpDir);
+
         config([
             'app.cron_token' => 'secret',
             'app.cron_allowed_ips' => [],
@@ -116,7 +128,7 @@ final class WebCronControllerTest extends TestCase
         $_SERVER['REMOTE_ADDR'] = '127.0.0.1';
 
         $schedule = new Schedule();
-        $controller = new WebCronController(new Application($this->tmpDir), $schedule);
+        $controller = $this->makeController($app, $schedule);
 
         $_GET = ['token' => 'secret'];
         $controller->handle(Request::capture());
@@ -126,5 +138,15 @@ final class WebCronControllerTest extends TestCase
 
         $this->assertSame(429, $response->getStatus());
         $this->assertStringContainsString('Too Many Requests', $response->getContent());
+    }
+
+    private function makeController(Application $app, Schedule $schedule): WebCronController
+    {
+        return new WebCronController(
+            $app,
+            $schedule,
+            $app->make(ConfigRepository::class),
+            $app->make(RateLimiter::class),
+        );
     }
 }

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Support\Concerns;
 
+use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Services\ContentParser;
 use VelvetCMS\Services\Parsers\CommonMarkParser;
 
@@ -19,6 +21,7 @@ trait CreatesContentParser
         return new ContentParser(
             $this->makeFileCache(),
             new CommonMarkParser($commonMarkOptions),
+            Application::getInstance()->make(ConfigRepository::class),
         );
     }
 }

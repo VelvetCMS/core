@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace VelvetCMS\Tests\Fixtures\Commands;
+namespace VelvetCMS\Tests\Support\Doubles\Commands;
 
 use VelvetCMS\Commands\Command;
 

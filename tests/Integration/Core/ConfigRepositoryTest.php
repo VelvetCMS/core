@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Integration\Core;
 
 use VelvetCMS\Core\ConfigRepository;
+use VelvetCMS\Tests\Support\Concerns\WritesTestFiles;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class ConfigRepositoryTest extends TestCase
 {
+    use WritesTestFiles;
+
     private string $testConfigPath;
     private ConfigRepository $config;
 
@@ -17,32 +20,34 @@ final class ConfigRepositoryTest extends TestCase
         parent::setUp();
 
         $this->testConfigPath = $this->tmpDir . '/config';
-        mkdir($this->testConfigPath, 0755, true);
-
-        // Create test config files
-        file_put_contents($this->testConfigPath . '/app.php', "<?php\nreturn ['name' => 'TestApp', 'debug' => true];");
-        file_put_contents($this->testConfigPath . '/database.php', "<?php\nreturn ['driver' => 'sqlite', 'connections' => ['test' => ['host' => 'localhost']]];");
-        file_put_contents($this->testConfigPath . '/nested.php', "<?php\nreturn ['level1' => ['level2' => ['level3' => 'deep value']]];");
+        $this->writePhpConfigFile($this->testConfigPath . '/app.php', ['name' => 'TestApp', 'debug' => true]);
+        $this->writePhpConfigFile($this->testConfigPath . '/database.php', [
+            'driver' => 'sqlite',
+            'connections' => ['test' => ['host' => 'localhost']],
+        ]);
+        $this->writePhpConfigFile($this->testConfigPath . '/nested.php', [
+            'level1' => ['level2' => ['level3' => 'deep value']],
+        ]);
 
         $this->config = new ConfigRepository($this->testConfigPath);
     }
 
-    public function testGetSimpleConfigValue(): void
+    public function test_get_simple_config_value(): void
     {
         $this->assertSame('TestApp', $this->config->get('app.name'));
     }
 
-    public function testGetNestedConfigValueWithDotNotation(): void
+    public function test_get_nested_config_value_with_dot_notation(): void
     {
         $this->assertSame('deep value', $this->config->get('nested.level1.level2.level3'));
     }
 
-    public function testGetReturnsDefaultWhenKeyNotFound(): void
+    public function test_get_returns_default_when_key_not_found(): void
     {
         $this->assertSame('default-value', $this->config->get('nonexistent.key', 'default-value'));
     }
 
-    public function testGetEntireConfigFile(): void
+    public function test_get_entire_config_file(): void
     {
         $app = $this->config->get('app');
 
@@ -51,13 +56,13 @@ final class ConfigRepositoryTest extends TestCase
         $this->assertTrue($app['debug']);
     }
 
-    public function testSetSimpleValue(): void
+    public function test_set_simple_value(): void
     {
         $this->config->set('app.version', '1.0.0');
         $this->assertSame('1.0.0', $this->config->get('app.version'));
     }
 
-    public function testSetNestedValueWithDotNotation(): void
+    public function test_set_nested_value_with_dot_notation(): void
     {
         $this->config->set('database.connections.test.port', 3306);
         $this->assertSame(3306, $this->config->get('database.connections.test.port'));

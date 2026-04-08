@@ -2,13 +2,13 @@
 
 declare(strict_types=1);
 
-namespace VelvetCMS\Tests\Support\Stubs;
+namespace VelvetCMS\Tests\Support\Doubles\Http;
 
 use VelvetCMS\Contracts\MiddlewareInterface;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
-class RecordingMiddleware implements MiddlewareInterface
+final class RecordingMiddleware implements MiddlewareInterface
 {
     public static array $calls = [];
 

@@ -5,19 +5,13 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Core;
 
 use VelvetCMS\Core\VersionRegistry;
-use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class VersionRegistryTest extends TestCase
 {
-    use ReflectionHelpers;
-
     protected function setUp(): void
     {
         parent::setUp();
-
-        // Reset singleton for each test
-        $this->setPrivateProperty(VersionRegistry::class, 'instance', null);
 
         // Set up test version config
         config(['version' => [
@@ -53,22 +47,22 @@ final class VersionRegistryTest extends TestCase
 
     public function test_instance_returns_singleton(): void
     {
-        $instance1 = VersionRegistry::instance();
-        $instance2 = VersionRegistry::instance();
+        $instance1 = $this->registry();
+        $instance2 = $this->registry();
 
         $this->assertSame($instance1, $instance2);
     }
 
     public function test_get_version_returns_core_version(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame('1.5.0', $registry->getVersion('core'));
     }
 
     public function test_get_version_returns_module_version(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame('1.0.0', $registry->getVersion('docs'));
         $this->assertSame('2.0.0-beta', $registry->getVersion('blog'));
@@ -76,14 +70,14 @@ final class VersionRegistryTest extends TestCase
 
     public function test_get_version_returns_zero_for_unknown(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame('0.0.0', $registry->getVersion('nonexistent'));
     }
 
     public function test_get_release_date(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame('2025-01-15', $registry->getReleaseDate('core'));
         $this->assertNull($registry->getReleaseDate('docs'));
@@ -91,7 +85,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_get_stability(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame('stable', $registry->getStability('core'));
         $this->assertSame('beta', $registry->getStability('blog'));
@@ -99,7 +93,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_get_stability_infers_from_version(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         // docs has no explicit stability, should infer from version
         $stability = $registry->getStability('docs');
@@ -108,7 +102,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_get_component_returns_full_metadata(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $core = $registry->getComponent('core');
         $this->assertArrayHasKey('version', $core);
@@ -121,14 +115,14 @@ final class VersionRegistryTest extends TestCase
 
     public function test_get_component_returns_empty_for_unknown(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertSame([], $registry->getComponent('unknown'));
     }
 
     public function test_get_modules(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $modules = $registry->getModules();
 
@@ -139,7 +133,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_has_module(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->hasModule('docs'));
         $this->assertFalse($registry->hasModule('nonexistent'));
@@ -147,7 +141,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_satisfies_with_valid_constraint(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->satisfies('1.5.0', '^1.0'));
         $this->assertTrue($registry->satisfies('1.5.0', '>=1.0'));
@@ -156,7 +150,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_satisfies_with_invalid_constraint(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertFalse($registry->satisfies('1.5.0', '^2.0'));
         $this->assertFalse($registry->satisfies('0.5.0', '^1.0'));
@@ -164,7 +158,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_satisfies_handles_invalid_constraint_syntax(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         // Invalid constraint should return false, not throw
         $this->assertFalse($registry->satisfies('1.0.0', 'not-a-constraint'));
@@ -172,7 +166,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_is_compatible_with_core(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->isCompatible('docs', 'core'));
         $this->assertTrue($registry->isCompatible('blog', 'core'));
@@ -181,7 +175,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_is_compatible_with_custom_version(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->isCompatible('legacy', 'core', '2.5.0'));
         $this->assertFalse($registry->isCompatible('legacy', 'core', '1.0.0'));
@@ -189,7 +183,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_is_compatible_returns_false_for_unknown_module(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertFalse($registry->isCompatible('nonexistent', 'core'));
     }
@@ -203,18 +197,14 @@ final class VersionRegistryTest extends TestCase
             ],
         ]]);
 
-        $reflection = new \ReflectionClass(VersionRegistry::class);
-        $instanceProp = $reflection->getProperty('instance');
-        $instanceProp->setValue(null, null);
-
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->isCompatible('no-deps', 'core'));
     }
 
     public function test_check_module_requirements_returns_empty_for_satisfied(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $issues = $registry->checkModuleRequirements('docs');
 
@@ -223,7 +213,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_check_module_requirements_returns_issues_for_unsatisfied(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $issues = $registry->checkModuleRequirements('legacy');
 
@@ -233,7 +223,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_check_module_requirements_for_unknown_module(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $issues = $registry->checkModuleRequirements('unknown');
 
@@ -243,7 +233,7 @@ final class VersionRegistryTest extends TestCase
 
     public function test_is_newer_than(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertTrue($registry->isNewerThan('1.0.0', 'core'));
         $this->assertFalse($registry->isNewerThan('2.0.0', 'core'));
@@ -252,9 +242,17 @@ final class VersionRegistryTest extends TestCase
 
     public function test_is_pre_release(): void
     {
-        $registry = VersionRegistry::instance();
+        $registry = $this->registry();
 
         $this->assertFalse($registry->isPreRelease('core'));
         $this->assertTrue($registry->isPreRelease('blog')); // Has beta stability
+    }
+
+    private function registry(): VersionRegistry
+    {
+        /** @var VersionRegistry $registry */
+        $registry = app(VersionRegistry::class);
+
+        return $registry;
     }
 }

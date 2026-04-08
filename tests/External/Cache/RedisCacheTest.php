@@ -2,42 +2,65 @@
 
 declare(strict_types=1);
 
-namespace VelvetCMS\Tests\Integration\Cache;
+namespace VelvetCMS\Tests\External\Cache;
 
-use VelvetCMS\Drivers\Cache\ApcuCache;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use VelvetCMS\Drivers\Cache\RedisCache;
 use VelvetCMS\Tests\Support\TestCase;
 
-final class ApcuCacheTest extends TestCase
+#[Group('external')]
+#[RequiresPhpExtension('redis')]
+final class RedisCacheTest extends TestCase
 {
-    private ?ApcuCache $cache = null;
+    private ?RedisCache $cache = null;
     private string $prefix;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (!extension_loaded('apcu') || !ini_get('apc.enabled')) {
-            $this->markTestSkipped('APCu extension is not loaded or enabled.');
+        $client = new \Redis();
+
+        try {
+            $connected = $client->connect('127.0.0.1', 6379, 0.5);
+        } catch (\RedisException $exception) {
+            $this->markTestSkipped('Redis server is not reachable on 127.0.0.1:6379');
         }
 
-        if (PHP_SAPI === 'cli' && !ini_get('apc.enable_cli')) {
-            $this->markTestSkipped('apc.enable_cli must be enabled for testing.');
+        if (!$connected) {
+            $this->markTestSkipped('Redis server is not reachable on 127.0.0.1:6379');
         }
 
-        $this->prefix = 'test_' . uniqid();
-        $this->cache = new ApcuCache(['prefix' => $this->prefix]);
+        try {
+            $client->ping();
+        } catch (\Throwable $exception) {
+            $client->close();
+            $this->markTestSkipped('Redis server is not responding to PING');
+        }
+
+        $client->close();
+
+        $this->prefix = 'velvet_test_' . uniqid('', true);
+        $this->cache = new RedisCache([
+            'host' => '127.0.0.1',
+            'port' => 6379,
+            'database' => 15,
+            'prefix' => $this->prefix,
+        ]);
         $this->cache->clear();
     }
 
     protected function tearDown(): void
     {
-        if ($this->cache) {
+        if ($this->cache !== null) {
             $this->cache->clear();
         }
+
         parent::tearDown();
     }
 
-    public function test_can_store_and_retrieve_values(): void
+    public function test_can_set_and_get_value(): void
     {
         $this->cache->set('foo', 'bar', 10);
         $this->assertSame('bar', $this->cache->get('foo'));
@@ -78,7 +101,7 @@ final class ApcuCacheTest extends TestCase
 
     public function test_stores_array_values(): void
     {
-        $data = ['name' => 'Velvet', 'version' => 1];
+        $data = ['name' => 'Velvet', 'items' => [1, 2, 3]];
         $this->cache->set('array', $data);
         $this->assertSame($data, $this->cache->get('array'));
     }
@@ -89,16 +112,20 @@ final class ApcuCacheTest extends TestCase
         $this->assertSame(42, $this->cache->get('int'));
     }
 
-    public function test_stores_null_value(): void
+    public function test_stores_boolean_true(): void
     {
-        $this->cache->set('null', null);
-        // Should return null, not default
-        $this->assertNull($this->cache->get('null', 'default'));
+        $this->cache->set('flag', true);
+        $this->assertTrue($this->cache->get('flag'));
     }
 
     public function test_prefix_isolates_keys(): void
     {
-        $otherCache = new ApcuCache(['prefix' => 'other_' . uniqid()]);
+        $otherCache = new RedisCache([
+            'host' => '127.0.0.1',
+            'port' => 6379,
+            'database' => 15,
+            'prefix' => 'other_' . uniqid('', true),
+        ]);
 
         $this->cache->set('shared', 'original');
         $otherCache->set('shared', 'other');
@@ -114,5 +141,11 @@ final class ApcuCacheTest extends TestCase
         $this->cache->set('key', 'first');
         $this->cache->set('key', 'second');
         $this->assertSame('second', $this->cache->get('key'));
+    }
+
+    public function test_uses_separate_database(): void
+    {
+        $this->cache->set('isolated', 'value');
+        $this->assertSame('value', $this->cache->get('isolated'));
     }
 }

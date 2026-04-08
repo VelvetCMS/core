@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
 use VelvetCMS\Contracts\TenantResolverInterface;
+use VelvetCMS\Core\Application;
 use VelvetCMS\Core\Tenancy\TenancyManager;
 use VelvetCMS\Core\Tenancy\TenantContext;
 use VelvetCMS\Http\Request;
@@ -25,10 +26,10 @@ final class TenancyManagerTest extends TestCase
         $this->setTenancyConfig(['enabled' => false]);
 
         $request = $this->makeRequest('GET', '/');
-        $context = TenancyManager::bootstrapFromRequest($request);
+        $context = $this->manager()->bootstrapFromRequest($request);
 
         $this->assertNull($context);
-        $this->assertNull(TenancyManager::current());
+        $this->assertNull($this->manager()->current());
     }
 
     public function test_host_mapping_resolves_tenant(): void
@@ -44,12 +45,12 @@ final class TenancyManagerTest extends TestCase
         ]);
 
         $request = $this->makeRequest('GET', '/', [], ['Host' => 'acme.test']);
-        $context = TenancyManager::bootstrapFromRequest($request);
+        $context = $this->manager()->bootstrapFromRequest($request);
 
         $this->assertInstanceOf(TenantContext::class, $context);
         $this->assertSame('acme', $context->id());
         $this->assertSame('acme.test', $context->host());
-        $this->assertSame('acme', TenancyManager::currentId());
+        $this->assertSame('acme', $this->manager()->currentId());
     }
 
     public function test_path_resolver_sets_prefix_and_strips_request_path(): void
@@ -64,7 +65,7 @@ final class TenancyManagerTest extends TestCase
         ]);
 
         $request = $this->makeRequest('GET', '/tenant-x/docs');
-        $context = TenancyManager::bootstrapFromRequest($request);
+        $context = $this->manager()->bootstrapFromRequest($request);
 
         $this->assertInstanceOf(TenantContext::class, $context);
         $this->assertSame('tenant-x', $context->id());
@@ -81,7 +82,7 @@ final class TenancyManagerTest extends TestCase
         ]);
 
         $request = $this->makeRequest('GET', '/');
-        $context = TenancyManager::bootstrapFromRequest($request);
+        $context = $this->manager()->bootstrapFromRequest($request);
 
         $this->assertInstanceOf(TenantContext::class, $context);
         $this->assertSame('callback-tenant', $context->id());
@@ -100,13 +101,21 @@ final class TenancyManagerTest extends TestCase
         putenv('TENANCY_TENANT=cli-tenant');
 
         try {
-            $context = TenancyManager::bootstrapFromCli();
+            $context = $this->manager()->bootstrapFromCli();
             $this->assertInstanceOf(TenantContext::class, $context);
             $this->assertSame('cli-tenant', $context->id());
         } finally {
             unset($_ENV['TENANCY_TENANT'], $_SERVER['TENANCY_TENANT']);
             putenv('TENANCY_TENANT');
         }
+    }
+
+    private function manager(): TenancyManager
+    {
+        /** @var TenancyManager $manager */
+        $manager = Application::getInstance()->make(TenancyManager::class);
+
+        return $manager;
     }
 
 }

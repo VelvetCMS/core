@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace VelvetCMS\Tests\Unit\Commands\Module;
 
 use VelvetCMS\Commands\Module\ProvisionModuleCommand;
-use VelvetCMS\Core\Tenancy\TenancyManager;
-use VelvetCMS\Core\Tenancy\TenantContext;
+use VelvetCMS\Tests\Support\ApplicationTestCase;
 use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
-use VelvetCMS\Tests\Support\TestCase;
 
-final class ProvisionModuleCommandTest extends TestCase
+final class ProvisionModuleCommandTest extends ApplicationTestCase
 {
     use TenancyTestHelpers;
+
     protected function tearDown(): void
     {
         $this->resetTenancyState();
@@ -25,38 +24,15 @@ final class ProvisionModuleCommandTest extends TestCase
             'enabled' => true,
             'paths' => ['storage_root' => 'storage/tenants'],
         ]);
-        TenancyManager::setCurrent(new TenantContext('demo'));
+        $this->setCurrentTenant('demo');
 
-        // Temporarily move aside any real global artifacts so the command sees an empty state
-        $globalFiles = [
-            base_path('storage/modules.json'),
-            base_path('storage/modules-compiled.json'),
-            base_path('storage/modules-autoload.php'),
-        ];
+        $command = new ProvisionModuleCommand();
+        $command->setOptions(['tenant' => 'demo']);
 
-        $stashed = [];
-        foreach ($globalFiles as $file) {
-            if (file_exists($file)) {
-                $backup = $file . '.test-backup';
-                rename($file, $backup);
-                $stashed[$file] = $backup;
-            }
-        }
+        [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());
 
-        try {
-            $command = new ProvisionModuleCommand();
-            $command->setOptions(['tenant' => 'demo']);
-
-            [$exitCode, $output] = $this->captureOutput(fn () => $command->handle());
-
-            $this->assertSame(0, $exitCode);
-            $this->assertStringContainsString('No global module artifacts', $output);
-        } finally {
-            // Restore stashed files regardless of test outcome
-            foreach ($stashed as $original => $backup) {
-                rename($backup, $original);
-            }
-        }
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('No global module artifacts', $output);
     }
 
     public function test_dry_run_does_not_create_files(): void
@@ -72,7 +48,7 @@ final class ProvisionModuleCommandTest extends TestCase
             'enabled' => true,
             'paths' => ['storage_root' => 'storage/tenants'],
         ]);
-        TenancyManager::setCurrent(new TenantContext('dry-test'));
+        $this->setCurrentTenant('dry-test');
 
         $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'dry-test', 'dry-run' => true]);
@@ -85,7 +61,6 @@ final class ProvisionModuleCommandTest extends TestCase
         $tenantState = base_path('storage/tenants/dry-test/modules/modules.json');
         $this->assertFileDoesNotExist($tenantState);
 
-        @unlink($storageDir . '/modules.json');
     }
 
     public function test_migrates_state_with_merge(): void
@@ -105,7 +80,7 @@ final class ProvisionModuleCommandTest extends TestCase
             'enabled' => true,
             'paths' => ['storage_root' => 'storage/tenants'],
         ]);
-        TenancyManager::setCurrent(new TenantContext('merge-test'));
+        $this->setCurrentTenant('merge-test');
 
         $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'merge-test']);
@@ -114,11 +89,8 @@ final class ProvisionModuleCommandTest extends TestCase
 
         $this->assertSame(0, $exitCode);
 
-        $result = json_decode(file_get_contents($tenantModulesDir . '/modules.json'), true);
+        $result = json_decode((string) file_get_contents($tenantModulesDir . '/modules.json'), true, flags: JSON_THROW_ON_ERROR);
         $this->assertEqualsCanonicalizing(['mod-a', 'mod-b', 'mod-c'], $result['enabled']);
-
-        @unlink($storageDir . '/modules.json');
-        $this->rrmdir(base_path('storage/tenants/merge-test'));
     }
 
     public function test_copies_compiled_when_missing(): void
@@ -135,7 +107,7 @@ final class ProvisionModuleCommandTest extends TestCase
             'enabled' => true,
             'paths' => ['storage_root' => 'storage/tenants'],
         ]);
-        TenancyManager::setCurrent(new TenantContext('copy-test'));
+        $this->setCurrentTenant('copy-test');
 
         $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'copy-test']);
@@ -148,8 +120,6 @@ final class ProvisionModuleCommandTest extends TestCase
         $this->assertFileExists($tenantCompiled);
         $this->assertSame($compiledData, file_get_contents($tenantCompiled));
 
-        @unlink($storageDir . '/modules-compiled.json');
-        $this->rrmdir(base_path('storage/tenants/copy-test'));
     }
 
     public function test_skips_compiled_when_already_exists(): void
@@ -169,7 +139,7 @@ final class ProvisionModuleCommandTest extends TestCase
             'enabled' => true,
             'paths' => ['storage_root' => 'storage/tenants'],
         ]);
-        TenancyManager::setCurrent(new TenantContext('skip-test'));
+        $this->setCurrentTenant('skip-test');
 
         $command = new ProvisionModuleCommand();
         $command->setOptions(['tenant' => 'skip-test']);
@@ -180,11 +150,7 @@ final class ProvisionModuleCommandTest extends TestCase
         $this->assertStringContainsString('skip compiled manifest (exists)', $output);
 
         // Verify tenant file was NOT overwritten
-        $content = json_decode(file_get_contents($tenantModulesDir . '/modules-compiled.json'), true);
+        $content = json_decode((string) file_get_contents($tenantModulesDir . '/modules-compiled.json'), true, flags: JSON_THROW_ON_ERROR);
         $this->assertTrue($content['tenant']);
-
-        @unlink($storageDir . '/modules-compiled.json');
-        $this->rrmdir(base_path('storage/tenants/skip-test'));
     }
-
 }

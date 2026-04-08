@@ -17,7 +17,7 @@ final class EventDispatcherTest extends TestCase
         $this->events = new EventDispatcher();
     }
 
-    public function testListenersExecuteInRegistrationOrder(): void
+    public function test_listeners_execute_in_registration_order(): void
     {
         $executionOrder = [];
 
@@ -38,7 +38,7 @@ final class EventDispatcherTest extends TestCase
         $this->assertSame(['first', 'second', 'third'], $executionOrder);
     }
 
-    public function testDispatchDoesNotReturnPayload(): void
+    public function test_dispatch_does_not_return_payload(): void
     {
         $this->events->listen('transform.number', function ($value) {
             return $value * 2;
@@ -49,7 +49,7 @@ final class EventDispatcherTest extends TestCase
         $this->assertNull($result);
     }
 
-    public function testListenersCannotMutateArrayPayload(): void
+    public function test_listeners_cannot_mutate_array_payload(): void
     {
         $this->events->listen('page.loading', function ($page) {
             $page['cached'] = true;
@@ -62,7 +62,7 @@ final class EventDispatcherTest extends TestCase
         $this->assertArrayNotHasKey('cached', $payload);
     }
 
-    public function testListenersCanMutateObjectPayloadByReference(): void
+    public function test_listeners_can_mutate_object_payload_by_reference(): void
     {
         $this->events->listen('user.creating', function ($user) {
             $user->validated = true;

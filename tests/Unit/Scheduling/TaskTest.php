@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Scheduling;
 
+use PHPUnit\Framework\Attributes\DataProvider;
 use VelvetCMS\Core\Application;
 use VelvetCMS\Scheduling\Task;
 use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
@@ -23,109 +24,42 @@ final class TaskTest extends TestCase
         $this->assertTrue($task->isDue());
     }
 
-    // === Cron Expression: Exact Match ===
-
-    public function test_exact_minute_matches(): void
+    public function test_expression_is_due_when_current_time_matches(): void
     {
-        $task = $this->createTaskWithExpression(
-            (int) date('i') . ' * * * *'
-        );
+        foreach ($this->dueExpressions() as $label => $expression) {
+            $task = $this->createTaskWithExpression($expression);
 
-        $this->assertTrue($task->isDue());
+            $this->assertTrue($task->isDue(), $label);
+        }
     }
 
-    public function test_exact_minute_does_not_match(): void
+    public function test_expression_is_not_due_when_current_time_does_not_match(): void
     {
-        $wrongMinute = ((int) date('i') + 1) % 60;
-        $task = $this->createTaskWithExpression("{$wrongMinute} * * * *");
+        foreach ($this->nonDueExpressions() as $label => $expression) {
+            $task = $this->createTaskWithExpression($expression);
 
-        $this->assertFalse($task->isDue());
-    }
-
-    public function test_exact_hour_matches(): void
-    {
-        $minute = (int) date('i');
-        $hour = (int) date('H');
-        $task = $this->createTaskWithExpression("{$minute} {$hour} * * *");
-
-        $this->assertTrue($task->isDue());
-    }
-
-    public function test_exact_hour_does_not_match(): void
-    {
-        $minute = (int) date('i');
-        $wrongHour = ((int) date('H') + 1) % 24;
-        $task = $this->createTaskWithExpression("{$minute} {$wrongHour} * * *");
-
-        $this->assertFalse($task->isDue());
-    }
-
-    // === Cron Expression: Comma Lists ===
-
-    public function test_comma_list_matches_current_value(): void
-    {
-        $minute = (int) date('i');
-        $otherMinute = ($minute + 5) % 60;
-        $task = $this->createTaskWithExpression("{$minute},{$otherMinute} * * * *");
-
-        $this->assertTrue($task->isDue());
-    }
-
-    public function test_comma_list_does_not_match_unlisted_value(): void
-    {
-        $minute = (int) date('i');
-        $other1 = ($minute + 1) % 60;
-        $other2 = ($minute + 2) % 60;
-        $task = $this->createTaskWithExpression("{$other1},{$other2} * * * *");
-
-        $this->assertFalse($task->isDue());
+            $this->assertFalse($task->isDue(), $label);
+        }
     }
 
     // === Cron Expression: Step Values ===
 
-    public function test_step_value_matches_when_divisible(): void
+    public function test_step_values_match_expected_due_state(): void
     {
-        // */1 should always match any minute
-        $task = $this->createTaskWithExpression('*/1 * * * *');
-        $this->assertTrue($task->isDue());
-    }
+        foreach ($this->stepExpressions() as $label => [$expression, $expected]) {
+            $task = $this->createTaskWithExpression($expression);
 
-    public function test_step_value_every_two_minutes(): void
-    {
-        $minute = (int) date('i');
-        $task = $this->createTaskWithExpression('*/2 * * * *');
-
-        // This should match when minute is divisible by 2
-        $this->assertSame($minute % 2 === 0, $task->isDue());
-    }
-
-    public function test_step_value_every_five_minutes(): void
-    {
-        $minute = (int) date('i');
-        $task = $this->createTaskWithExpression('*/5 * * * *');
-
-        $this->assertSame($minute % 5 === 0, $task->isDue());
-    }
-
-    public function test_step_value_every_fifteen_minutes(): void
-    {
-        $minute = (int) date('i');
-        $task = $this->createTaskWithExpression('*/15 * * * *');
-
-        $this->assertSame($minute % 15 === 0, $task->isDue());
+            $this->assertSame($expected, $task->isDue(), $label);
+        }
     }
 
     // === Cron Expression: Invalid ===
 
-    public function test_invalid_expression_with_wrong_parts_count_returns_false(): void
+    #[DataProvider('provide_invalid_expressions')]
+    public function test_invalid_expressions_return_false(string $expression): void
     {
-        $task = $this->createTaskWithExpression('* * *'); // Only 3 parts
-        $this->assertFalse($task->isDue());
-    }
+        $task = $this->createTaskWithExpression($expression);
 
-    public function test_invalid_expression_with_too_many_parts_returns_false(): void
-    {
-        $task = $this->createTaskWithExpression('* * * * * *'); // 6 parts
         $this->assertFalse($task->isDue());
     }
 
@@ -238,52 +172,6 @@ final class TaskTest extends TestCase
         $this->assertSame($task, $task->dailyAt(12, 0));
     }
 
-    // === Day/Month/Weekday Matching ===
-
-    public function test_matches_current_day_of_month(): void
-    {
-        $minute = (int) date('i');
-        $hour = (int) date('H');
-        $day = (int) date('d');
-        $task = $this->createTaskWithExpression("{$minute} {$hour} {$day} * *");
-
-        $this->assertTrue($task->isDue());
-    }
-
-    public function test_does_not_match_wrong_day_of_month(): void
-    {
-        $minute = (int) date('i');
-        $hour = (int) date('H');
-        $wrongDay = ((int) date('d') % 28) + 1; // Different day (safe for all months)
-        if ($wrongDay === (int) date('d')) {
-            $wrongDay = ($wrongDay % 28) + 1;
-        }
-        $task = $this->createTaskWithExpression("{$minute} {$hour} {$wrongDay} * *");
-
-        $this->assertFalse($task->isDue());
-    }
-
-    public function test_matches_current_month(): void
-    {
-        $minute = (int) date('i');
-        $hour = (int) date('H');
-        $day = (int) date('d');
-        $month = (int) date('m');
-        $task = $this->createTaskWithExpression("{$minute} {$hour} {$day} {$month} *");
-
-        $this->assertTrue($task->isDue());
-    }
-
-    public function test_matches_current_weekday(): void
-    {
-        $minute = (int) date('i');
-        $hour = (int) date('H');
-        $weekday = (int) date('w'); // 0 = Sunday
-        $task = $this->createTaskWithExpression("{$minute} {$hour} * * {$weekday}");
-
-        $this->assertTrue($task->isDue());
-    }
-
     /**
      * Helper to create a task with a specific cron expression.
      */
@@ -293,5 +181,69 @@ final class TaskTest extends TestCase
         $this->setPrivateProperty($task, 'expression', $expression);
 
         return $task;
+    }
+
+    private function dueExpressions(): array
+    {
+        $now = new \DateTimeImmutable();
+        $minute = (int) $now->format('i');
+        $hour = (int) $now->format('H');
+        $day = (int) $now->format('d');
+        $month = (int) $now->format('m');
+        $weekday = (int) $now->format('w');
+        $otherMinute = ($minute + 5) % 60;
+
+        return [
+            'exact minute' => "{$minute} * * * *",
+            'exact hour' => "{$minute} {$hour} * * *",
+            'comma list' => "{$minute},{$otherMinute} * * * *",
+            'current day of month' => "{$minute} {$hour} {$day} * *",
+            'current month' => "{$minute} {$hour} {$day} {$month} *",
+            'current weekday' => "{$minute} {$hour} * * {$weekday}",
+        ];
+    }
+
+    private function nonDueExpressions(): array
+    {
+        $now = new \DateTimeImmutable();
+        $minute = (int) $now->format('i');
+        $hour = (int) $now->format('H');
+        $wrongMinute = ($minute + 1) % 60;
+        $wrongHour = ($hour + 1) % 24;
+        $otherMinuteOne = ($minute + 1) % 60;
+        $otherMinuteTwo = ($minute + 2) % 60;
+        $day = (int) $now->format('d');
+        $wrongDay = ($day % 28) + 1;
+
+        if ($wrongDay === $day) {
+            $wrongDay = ($wrongDay % 28) + 1;
+        }
+
+        return [
+            'wrong minute' => "{$wrongMinute} * * * *",
+            'wrong hour' => "{$minute} {$wrongHour} * * *",
+            'unlisted comma value' => "{$otherMinuteOne},{$otherMinuteTwo} * * * *",
+            'wrong day of month' => "{$minute} {$hour} {$wrongDay} * *",
+        ];
+    }
+
+    private function stepExpressions(): array
+    {
+        $minute = (int) (new \DateTimeImmutable())->format('i');
+
+        return [
+            'every minute' => ['*/1 * * * *', true],
+            'every two minutes' => ['*/2 * * * *', $minute % 2 === 0],
+            'every five minutes' => ['*/5 * * * *', $minute % 5 === 0],
+            'every fifteen minutes' => ['*/15 * * * *', $minute % 15 === 0],
+        ];
+    }
+
+    public static function provide_invalid_expressions(): array
+    {
+        return [
+            'too few parts' => ['* * *'],
+            'too many parts' => ['* * * * * *'],
+        ];
     }
 }

@@ -2,54 +2,29 @@
 
 declare(strict_types=1);
 
-namespace VelvetCMS\Tests\Integration\Cache;
+namespace VelvetCMS\Tests\External\Cache;
 
-use VelvetCMS\Drivers\Cache\RedisCache;
+use PHPUnit\Framework\Attributes\Group;
+use PHPUnit\Framework\Attributes\RequiresPhpExtension;
+use PHPUnit\Framework\Attributes\RequiresSetting;
+use VelvetCMS\Drivers\Cache\ApcuCache;
 use VelvetCMS\Tests\Support\TestCase;
 
-final class RedisCacheTest extends TestCase
+#[Group('external')]
+#[RequiresPhpExtension('apcu')]
+#[RequiresSetting('apc.enabled', '1')]
+#[RequiresSetting('apc.enable_cli', '1')]
+final class ApcuCacheTest extends TestCase
 {
-    private ?RedisCache $cache = null;
+    private ?ApcuCache $cache = null;
     private string $prefix;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        if (!class_exists(\Redis::class)) {
-            $this->markTestSkipped('Redis extension is not available.');
-        }
-
-        $client = new \Redis();
-
-        try {
-            $connected = $client->connect('127.0.0.1', 6379, 0.5);
-        } catch (\RedisException $e) {
-            $this->markTestSkipped('Redis server is not reachable on 127.0.0.1:6379');
-        }
-
-        if (!$connected) {
-            $this->markTestSkipped('Redis server is not reachable on 127.0.0.1:6379');
-        }
-
-        try {
-            $client->ping();
-        } catch (\Throwable $e) {
-            $client->close();
-            $this->markTestSkipped('Redis server is not responding to PING');
-        }
-
-        $client->close();
-
-        $this->prefix = 'velvet_test_' . uniqid('', true);
-        $config = [
-            'host' => '127.0.0.1',
-            'port' => 6379,
-            'database' => 15,
-            'prefix' => $this->prefix,
-        ];
-
-        $this->cache = new RedisCache($config);
+        $this->prefix = 'test_' . uniqid('', true);
+        $this->cache = new ApcuCache(['prefix' => $this->prefix]);
         $this->cache->clear();
     }
 
@@ -58,10 +33,11 @@ final class RedisCacheTest extends TestCase
         if ($this->cache !== null) {
             $this->cache->clear();
         }
+
         parent::tearDown();
     }
 
-    public function test_can_set_and_get_value(): void
+    public function test_can_store_and_retrieve_values(): void
     {
         $this->cache->set('foo', 'bar', 10);
         $this->assertSame('bar', $this->cache->get('foo'));
@@ -102,7 +78,7 @@ final class RedisCacheTest extends TestCase
 
     public function test_stores_array_values(): void
     {
-        $data = ['name' => 'Velvet', 'items' => [1, 2, 3]];
+        $data = ['name' => 'Velvet', 'version' => 1];
         $this->cache->set('array', $data);
         $this->assertSame($data, $this->cache->get('array'));
     }
@@ -113,23 +89,15 @@ final class RedisCacheTest extends TestCase
         $this->assertSame(42, $this->cache->get('int'));
     }
 
-    public function test_stores_boolean_true(): void
+    public function test_stores_null_value(): void
     {
-        $this->cache->set('flag', true);
-        $this->assertTrue($this->cache->get('flag'));
+        $this->cache->set('null', null);
+        $this->assertNull($this->cache->get('null', 'default'));
     }
-
-    // Note: Storing literal `false` is problematic in Redis since false === "not found"
-    // Use 0/1 or 'true'/'false' strings for boolean-like values in cache
 
     public function test_prefix_isolates_keys(): void
     {
-        $otherCache = new RedisCache([
-            'host' => '127.0.0.1',
-            'port' => 6379,
-            'database' => 15,
-            'prefix' => 'other_' . uniqid('', true),
-        ]);
+        $otherCache = new ApcuCache(['prefix' => 'other_' . uniqid('', true)]);
 
         $this->cache->set('shared', 'original');
         $otherCache->set('shared', 'other');
@@ -145,12 +113,5 @@ final class RedisCacheTest extends TestCase
         $this->cache->set('key', 'first');
         $this->cache->set('key', 'second');
         $this->assertSame('second', $this->cache->get('key'));
-    }
-
-    public function test_uses_separate_database(): void
-    {
-        // Our cache uses database 15, which should be isolated
-        $this->cache->set('isolated', 'value');
-        $this->assertSame('value', $this->cache->get('isolated'));
     }
 }

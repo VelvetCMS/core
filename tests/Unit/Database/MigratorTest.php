@@ -16,6 +16,7 @@ final class MigratorTest extends TestCase
     use CreatesTestDatabase;
 
     private Connection $connection;
+    private Schema $schema;
     private MigrationRepository $repository;
     private Migrator $migrator;
     private string $migrationsPath;
@@ -28,11 +29,9 @@ final class MigratorTest extends TestCase
         mkdir($this->migrationsPath, 0755, true);
 
         $this->connection = $this->makeSqliteConnection();
-
-        Schema::setConnection($this->connection);
-
-        $this->repository = new MigrationRepository($this->connection);
-        $this->migrator = new Migrator($this->connection, $this->repository);
+        $this->schema = new Schema($this->connection);
+        $this->repository = new MigrationRepository($this->connection, $this->schema);
+        $this->migrator = new Migrator($this->connection, $this->schema, $this->repository);
     }
 
     public function test_runs_simple_sql_migration(): void
@@ -84,9 +83,9 @@ use VelvetCMS\Database\Schema\Blueprint;
 use VelvetCMS\Database\Schema\Schema;
 
 return new class {
-    public function up(): void
+    public function up(Schema $schema): void
     {
-        Schema::create('test_php', function (Blueprint $table) {
+        $schema->create('test_php', function (Blueprint $table) {
             $table->id();
             $table->string('name');
         });
@@ -116,6 +115,6 @@ PHP;
         // Second run - should not fail due to "table already exists"
         $this->migrator->run($this->migrationsPath);
 
-        $this->assertTrue(true); // If we got here, it didn't crash
+        $this->assertSame(['001_repeat'], $this->repository->getRan());
     }
 }

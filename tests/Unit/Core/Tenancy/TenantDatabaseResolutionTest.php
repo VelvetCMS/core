@@ -4,26 +4,24 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Core\Tenancy;
 
-use PHPUnit\Framework\TestCase;
-use ReflectionClass;
-use ReflectionMethod;
+use VelvetCMS\Core\Application;
 use VelvetCMS\Core\CoreServiceProvider;
+use VelvetCMS\Tests\Support\Concerns\ReflectionHelpers;
 use VelvetCMS\Tests\Support\Concerns\TenancyTestHelpers;
+use VelvetCMS\Tests\Support\TestCase;
 
 final class TenantDatabaseResolutionTest extends TestCase
 {
+    use ReflectionHelpers;
     use TenancyTestHelpers;
 
-    private ReflectionMethod $resolveMethod;
     private CoreServiceProvider $provider;
 
     protected function setUp(): void
     {
         parent::setUp();
 
-        $ref = new ReflectionClass(CoreServiceProvider::class);
-        $this->provider = $ref->newInstanceWithoutConstructor();
-        $this->resolveMethod = $ref->getMethod('resolveTenantDatabase');
+        $this->provider = new CoreServiceProvider(Application::getInstance());
     }
 
     protected function tearDown(): void
@@ -193,7 +191,7 @@ final class TenantDatabaseResolutionTest extends TestCase
 
     private function resolve(string $tenantId, array $config): array
     {
-        return $this->resolveMethod->invoke($this->provider, $tenantId, $config);
+        return $this->callPrivateMethod($this->provider, 'resolveTenantDatabase', [$tenantId, $config]);
     }
 
     private function baseDbConfig(): array
@@ -211,5 +209,4 @@ final class TenantDatabaseResolutionTest extends TestCase
             ],
         ];
     }
-
 }

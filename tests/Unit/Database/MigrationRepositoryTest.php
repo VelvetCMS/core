@@ -15,6 +15,7 @@ final class MigrationRepositoryTest extends TestCase
     use CreatesTestDatabase;
 
     private Connection $connection;
+    private Schema $schema;
     private MigrationRepository $repository;
 
     protected function setUp(): void
@@ -22,8 +23,8 @@ final class MigrationRepositoryTest extends TestCase
         parent::setUp();
 
         $this->connection = $this->makeSqliteConnection('migrations-test');
-        Schema::setConnection($this->connection);
-        $this->repository = new MigrationRepository($this->connection);
+        $this->schema = new Schema($this->connection);
+        $this->repository = new MigrationRepository($this->connection, $this->schema);
     }
 
     public function test_repository_exists_returns_false_initially(): void

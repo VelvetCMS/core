@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace VelvetCMS\Tests\Unit\Services;
 
+use PHPUnit\Framework\Attributes\RunTestsInSeparateProcesses;
 use VelvetCMS\Services\SessionManager;
 use VelvetCMS\Tests\Support\TestCase;
 
-/**
- * @runInSeparateProcess
- */
+#[RunTestsInSeparateProcesses]
 final class SessionManagerTest extends TestCase
 {
     private SessionManager $session;

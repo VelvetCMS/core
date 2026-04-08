@@ -7,6 +7,8 @@ namespace VelvetCMS\Tests\Integration\Content;
 use VelvetCMS\Content\Index\JsonPageIndex;
 use VelvetCMS\Content\Index\PageIndexer;
 use VelvetCMS\Content\Index\SqlitePageIndex;
+use VelvetCMS\Database\Connection;
+use VelvetCMS\Database\Schema\Schema;
 use VelvetCMS\Drivers\Content\FileDriver;
 use VelvetCMS\Models\Page;
 use VelvetCMS\Tests\Support\Concerns\CreatesContentParser;
@@ -20,7 +22,7 @@ final class PageIndexBackendTest extends TestCase
     {
         $contentPath = $this->tmpDir . '/content/pages';
         $index = match ($backend) {
-            'sqlite' => new SqlitePageIndex($this->pageIndexSqlitePath()),
+            'sqlite' => $this->makeSqliteIndex(),
             default => new JsonPageIndex($this->pageIndexJsonPath()),
         };
 
@@ -30,6 +32,22 @@ final class PageIndexBackendTest extends TestCase
             new PageIndexer(),
             $contentPath,
         );
+    }
+
+    private function makeSqliteIndex(): SqlitePageIndex
+    {
+        $connection = new Connection([
+            'default' => 'sqlite',
+            'connections' => [
+                'sqlite' => ['driver' => 'sqlite', 'database' => $this->pageIndexSqlitePath()],
+            ],
+        ]);
+        $schema = new Schema($connection);
+
+        $migration = require base_path('database/migrations/001_create_page_index_table.php');
+        $migration->up($schema);
+
+        return new SqlitePageIndex($connection);
     }
 
     public function test_json_index_rebuilds_from_corrupt_index_file(): void

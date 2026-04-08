@@ -8,7 +8,7 @@ use VelvetCMS\Core\EventDispatcher;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 use VelvetCMS\Http\Routing\Router;
-use VelvetCMS\Tests\Support\Stubs\RecordingMiddleware;
+use VelvetCMS\Tests\Support\Doubles\Http\RecordingMiddleware;
 use VelvetCMS\Tests\Support\TestCase;
 
 final class RouterMiddlewareTest extends TestCase
