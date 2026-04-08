@@ -5,11 +5,21 @@ declare(strict_types=1);
 namespace VelvetCMS\Http\Middleware;
 
 use VelvetCMS\Contracts\MiddlewareInterface;
+use VelvetCMS\Core\ConfigRepository;
+use VelvetCMS\Core\Paths;
+use VelvetCMS\Core\Tenancy\TenancyState;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
 
 class StartSessionMiddleware implements MiddlewareInterface
 {
+    public function __construct(
+        private readonly ConfigRepository $config,
+        private readonly Paths $paths,
+        private readonly TenancyState $tenancyState
+    ) {
+    }
+
     public function handle(Request $request, callable $next): Response
     {
         if (PHP_SAPI !== 'cli' && session_status() === PHP_SESSION_NONE) {
@@ -23,47 +33,51 @@ class StartSessionMiddleware implements MiddlewareInterface
     private function configure(): void
     {
         // Session lifetime
-        $lifetime = config('session.lifetime', 7200);
+        $lifetime = (int) $this->config->get('session.lifetime', 7200);
         ini_set('session.gc_maxlifetime', (string) $lifetime);
         ini_set('session.cookie_lifetime', (string) $lifetime);
 
         // Custom session name
-        $sessionName = config('session.name', 'velvet_session');
+        $sessionName = (string) $this->config->get('session.name', 'velvet_session');
         session_name($sessionName);
 
         // Session storage
-        $savePath = storage_path('sessions');
+        $savePath = $this->paths->storage('sessions');
         if (!is_dir($savePath)) {
             mkdir($savePath, 0700, true);
         }
         ini_set('session.save_path', $savePath);
 
         // Security settings
-        ini_set('session.cookie_httponly', config('session.http_only', true) ? '1' : '0');
-        ini_set('session.use_strict_mode', config('session.strict_mode', true) ? '1' : '0');
-        ini_set('session.use_only_cookies', config('session.use_only_cookies', true) ? '1' : '0');
+        ini_set('session.cookie_httponly', (bool) $this->config->get('session.http_only', true) ? '1' : '0');
+        ini_set('session.use_strict_mode', (bool) $this->config->get('session.strict_mode', true) ? '1' : '0');
+        ini_set('session.use_only_cookies', (bool) $this->config->get('session.use_only_cookies', true) ? '1' : '0');
 
         // Secure flag - auto-detect HTTPS or read from config
-        $secure = config('session.secure', 'auto');
+        $secure = $this->config->get('session.secure', 'auto');
         if ($secure === 'auto') {
             $isHttps = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';
-            $secure = $isHttps || config('app.env') === 'production';
+            $secure = $isHttps || $this->config->get('app.env') === 'production';
         }
         ini_set('session.cookie_secure', $secure ? '1' : '0');
 
         // SameSite attribute
-        $sameSite = config('session.same_site', 'Lax');
+        $sameSite = (string) $this->config->get('session.same_site', 'Lax');
         ini_set('session.cookie_samesite', $sameSite);
 
         // Session path and domain
-        $path = config('session.path');
-        if (!$path && tenant_prefix() !== '') {
-            $path = tenant_prefix();
+        $path = $this->config->get('session.path');
+        $currentTenant = $this->tenancyState->current();
+        $tenantPathPrefix = $currentTenant?->urlPrefix();
+
+        if ((!is_string($path) || $path === '') && $tenantPathPrefix !== null) {
+            $path = $tenantPathPrefix;
         }
-        if ($path) {
+        if (is_string($path) && $path !== '') {
             ini_set('session.cookie_path', $path);
         }
-        if ($domain = config('session.domain')) {
+        $domain = $this->config->get('session.domain');
+        if (is_string($domain) && $domain !== '') {
             ini_set('session.cookie_domain', $domain);
         }
     }

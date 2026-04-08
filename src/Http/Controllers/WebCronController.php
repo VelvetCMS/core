@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Http\Controllers;
 
 use VelvetCMS\Core\Application;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Http\RateLimiting\RateLimiter;
 use VelvetCMS\Http\Request;
 use VelvetCMS\Http\Response;
@@ -14,7 +15,9 @@ class WebCronController
 {
     public function __construct(
         private readonly Application $app,
-        private readonly Schedule $schedule
+        private readonly Schedule $schedule,
+        private readonly ConfigRepository $config,
+        private readonly RateLimiter $rateLimiter
     ) {
     }
 
@@ -55,7 +58,7 @@ class WebCronController
 
     private function isAuthorized(Request $request): bool
     {
-        $configuredToken = (string) config('app.cron_token', '');
+        $configuredToken = (string) $this->config->get('app.cron_token', '');
         if ($configuredToken === '') {
             return false;
         }
@@ -65,7 +68,7 @@ class WebCronController
             return true;
         }
 
-        if (!(bool) config('app.cron_signed_urls', false)) {
+        if (!(bool) $this->config->get('app.cron_signed_urls', false)) {
             return false;
         }
 
@@ -83,7 +86,7 @@ class WebCronController
 
     private function isIpAllowed(): bool
     {
-        $allowlist = config('app.cron_allowed_ips', []);
+        $allowlist = $this->config->get('app.cron_allowed_ips', []);
         if (!is_array($allowlist) || $allowlist === []) {
             return true;
         }
@@ -119,29 +122,20 @@ class WebCronController
 
     private function checkRateLimit(): ?Response
     {
-        if (!(bool) config('app.cron_rate_limit.enabled', false)) {
+        if (!(bool) $this->config->get('app.cron_rate_limit.enabled', false)) {
             return null;
         }
 
-        $attempts = max(1, (int) config('app.cron_rate_limit.attempts', 60));
-        $decay = max(1, (int) config('app.cron_rate_limit.decay', 60));
+        $attempts = max(1, (int) $this->config->get('app.cron_rate_limit.attempts', 60));
+        $decay = max(1, (int) $this->config->get('app.cron_rate_limit.decay', 60));
         $remoteIp = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
 
-        try {
-            $limiter = $this->app->make(RateLimiter::class);
-            if (!$limiter instanceof RateLimiter) {
-                return null;
-            }
-
-            $result = $limiter->attempt('webcron:' . $remoteIp, $attempts, $decay);
-            if ($result['allowed']) {
-                return null;
-            }
-
-            return Response::html('Too Many Requests', 429);
-        } catch (\Throwable) {
+        $result = $this->rateLimiter->attempt('webcron:' . $remoteIp, $attempts, $decay);
+        if ($result['allowed']) {
             return null;
         }
+
+        return Response::html('Too Many Requests', 429);
     }
 
     private function ipInCidr(string $ip, string $cidr): bool

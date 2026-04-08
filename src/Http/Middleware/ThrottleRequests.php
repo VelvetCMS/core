@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace VelvetCMS\Http\Middleware;
 
 use VelvetCMS\Contracts\MiddlewareInterface;
+use VelvetCMS\Core\ConfigRepository;
 use VelvetCMS\Http\RateLimiting\Limit;
 use VelvetCMS\Http\RateLimiting\RateLimiter;
 use VelvetCMS\Http\Request;
@@ -15,7 +16,8 @@ class ThrottleRequests implements MiddlewareInterface
     private ?string $limiterName = null;
 
     public function __construct(
-        private readonly RateLimiter $rateLimiter
+        private readonly RateLimiter $rateLimiter,
+        private readonly ConfigRepository $config
     ) {
     }
 
@@ -27,7 +29,7 @@ class ThrottleRequests implements MiddlewareInterface
 
     public function handle(Request $request, callable $next): Response
     {
-        if (!config('http.rate_limit.enabled', true)) {
+        if (!(bool) $this->config->get('http.rate_limit.enabled', true)) {
             return $next($request);
         }
 
@@ -81,16 +83,16 @@ class ThrottleRequests implements MiddlewareInterface
 
     protected function getDefaultLimit(): Limit
     {
-        $defaultName = config('http.rate_limit.default', 'standard');
+        $defaultName = (string) $this->config->get('http.rate_limit.default', 'standard');
 
         return $this->getConfiguredLimit($defaultName) ?? new Limit();
     }
 
     protected function getConfiguredLimit(string $name): ?Limit
     {
-        $limiters = config('http.rate_limit.limiters', []);
+        $limiters = $this->config->get('http.rate_limit.limiters', []);
 
-        if (!isset($limiters[$name])) {
+        if (!is_array($limiters) || !isset($limiters[$name]) || !is_array($limiters[$name])) {
             return null;
         }
 
@@ -99,7 +101,7 @@ class ThrottleRequests implements MiddlewareInterface
         return new Limit(
             maxAttempts: (int) ($config['attempts'] ?? 60),
             decaySeconds: (int) ($config['decay'] ?? 60),
-            by: $config['by'] ?? 'ip'
+            by: is_string($config['by'] ?? null) ? $config['by'] : 'ip'
         );
     }
 

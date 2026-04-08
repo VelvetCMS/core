@@ -5,11 +5,8 @@ declare(strict_types=1);
 namespace VelvetCMS\Http;
 
 /** Serves static assets from user views and modules. Fast-path before routing. */
-class AssetServer
+final class AssetServer
 {
-    private static array $modulePaths = [];
-    private static ?string $userPath = null;
-
     private const MIME_TYPES = [
         'css' => 'text/css',
         'js' => 'application/javascript',
@@ -40,18 +37,12 @@ class AssetServer
 
     private const ASSET_DIRS = ['css', 'js', 'img', 'images', 'fonts', 'media', 'files'];
 
-    public static function init(?string $userPath = null): void
-    {
-        self::$userPath = $userPath ?? view_path();
-    }
-
-    public static function module(string $name, string $publicPath): void
-    {
-        self::$modulePaths[strtolower($name)] = rtrim($publicPath, '/');
-    }
+    /** @var array<string, string> */
+    private array $modulePaths = [];
+    private ?string $userPath = null;
 
     /** Returns Response if found, null otherwise. */
-    public static function serve(Request $request): ?Response
+    public function serve(Request $request): ?Response
     {
         $path = $request->path();
 
@@ -83,32 +74,57 @@ class AssetServer
         // Check if first segment is an asset directory (css, js, img, etc.)
         // If so, serve from user views: /assets/css/... → user/views/assets/css/...
         if (in_array($first, self::ASSET_DIRS, true)) {
-            return self::serveUserAsset($assetPath, $extension, $request);
+            return $this->serveUserAsset($assetPath, $extension, $request);
         }
 
         // Otherwise, first segment is module name: /assets/admin/... → module public dir
-        return self::serveModuleAsset($first, $rest, $extension, $request);
+        return $this->serveModuleAsset($first, $rest, $extension, $request);
     }
 
-    private static function serveUserAsset(string $relativePath, string $extension, Request $request): ?Response
+    public function initialize(?string $userPath = null): void
     {
-        if (self::$userPath === null) {
-            self::init();
+        $this->userPath = $userPath !== null
+            ? rtrim($userPath, '/\\')
+            : rtrim(view_path(), '/\\');
+    }
+
+    public function registerModule(string $name, string $publicPath): void
+    {
+        $this->modulePaths[strtolower($name)] = rtrim($publicPath, '/\\');
+    }
+
+    public function modulePath(string $name): ?string
+    {
+        return $this->modulePaths[strtolower($name)] ?? null;
+    }
+
+    public function reset(): void
+    {
+        $this->modulePaths = [];
+        $this->userPath = null;
+    }
+
+    private function serveUserAsset(string $relativePath, string $extension, Request $request): ?Response
+    {
+        if ($this->userPath === null) {
+            $this->initialize();
         }
 
-        $filePath = self::$userPath . '/assets/' . self::sanitize($relativePath);
-        return self::tryServeFile($filePath, self::$userPath, $extension, $request);
-    }
-
-    private static function serveModuleAsset(string $module, string $relativePath, string $extension, Request $request): ?Response
-    {
-        $module = strtolower($module);
-
-        if (!isset(self::$modulePaths[$module])) {
+        if ($this->userPath === null) {
             return null;
         }
 
-        $publicDir = self::$modulePaths[$module];
+        $filePath = $this->userPath . '/assets/' . self::sanitize($relativePath);
+        return self::tryServeFile($filePath, $this->userPath, $extension, $request);
+    }
+
+    private function serveModuleAsset(string $module, string $relativePath, string $extension, Request $request): ?Response
+    {
+        $publicDir = $this->modulePaths[strtolower($module)] ?? null;
+        if ($publicDir === null) {
+            return null;
+        }
+
         $filePath = $publicDir . '/' . self::sanitize($relativePath);
         return self::tryServeFile($filePath, $publicDir, $extension, $request);
     }
@@ -173,8 +189,4 @@ class AssetServer
         return str_replace(['../', '..\\', "\0", '//'], ['', '', '', '/'], $path);
     }
 
-    public static function getModulePaths(): array
-    {
-        return self::$modulePaths;
-    }
 }
