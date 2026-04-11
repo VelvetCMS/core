@@ -13,13 +13,11 @@
 
 ## Why VelvetCMS Core?
 
-Most PHP frameworks fall into two camps: heavyweight full-stack solutions with steep learning curves, or minimal routers that leave you rebuilding the same features for every project. VelvetCMS Core sits between those extremes.
+VelvetCMS Core is a PHP framework for developers who want full-stack capabilities without framework opacity. Explicit architecture, practical defaults, a codebase you can trace end to end.
 
-It is built for developers and teams that want full-stack capabilities without framework opacity: explicit architecture, practical defaults, and a codebase you can reason about quickly.
+We call this **Pragmatic Zero Magic**: every service binding, every middleware, every routing decision is visible in code you own - not buried in framework internals.
 
-That philosophy is what we call **Pragmatic Zero Magic**. You should be able to trace every part of your application's lifecycle without digging through layers of invisible behavior.
-
-Core also deliberately tracks modern PHP aggressively. We target current stable releases early, remove legacy detours when they start warping the design, and prefer clear upgrade paths over dragging old compatibility baggage forward.
+Core tracks modern PHP aggressively. We target current stable releases early, remove legacy detours when they warp the design, and prefer clear upgrade paths over compatibility baggage.
 
 - **Explicit over Implicit**: Service bindings live in bootstrap code, routes and middleware are declared directly, and the request lifecycle stays readable end to end.
 - **Pragmatic Convenience**: Autowiring helps with controllers and commands, but command registration, module loading, and core service wiring remain explicit where hidden resolution would cost clarity.
@@ -81,6 +79,7 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
   - Configurable runtime string evaluation guard for `compileString()` / `safe()`
 - **Asset Server**: Built-in static asset serving for development and production, handling MIME types and module assets efficiently.
 - **Trusted Proxy Support**: Optional forwarded host/scheme/IP handling for reverse-proxy deployments (`http.trusted_proxies`).
+- **Response Caching**: ETag-based HTTP caching middleware with `304 Not Modified` support for GET/HEAD responses.
 - **Security Suite**: Built-in protection against common vectors.
   - ✅ **XSS Protection** - Auto-escaping template engine
   - ✅ **CSRF Protection** - Token-based validation
@@ -103,6 +102,9 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
   - **Auto Cleanup**: Configurable `max_files` to prevent disk bloat.
 
 ### System & Scheduling
+- **Job Queue**: Database-backed async job processing with sync and database drivers.
+  - **Retry & Deduplication**: Configurable retry attempts, unique job constraints.
+  - **Worker Daemon**: `queue:work` command with graceful shutdown, memory limits, and max-job caps.
 - **Task Scheduler**: Cron-style task scheduling defined in PHP.
   - **Fluent Frequency**: Define schedules naturally (`->daily()`, `->everyMinute()`).
   - **Command & Callback**: Schedule console commands or PHP closures.
@@ -128,7 +130,7 @@ Core also deliberately tracks modern PHP aggressively. We target current stable 
 
 ## Requirements
 
-- **PHP 8.4+** (+ extensions: `pdo`, `mbstring`, `json`)
+- **PHP 8.4+** (+ extensions: `pdo`, `mbstring`, `json`, `openssl`)
 - **Optional PHP extensions**: `curl` for the HTTP client, `apcu` for APCu cache, `redis` for Redis cache
 - **Linux/WSL2**
 - Composer

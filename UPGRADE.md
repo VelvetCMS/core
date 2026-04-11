@@ -160,7 +160,7 @@ The static `Schema` runtime owner is removed. `Schema::create()`, `Schema::drop(
 #### Minor breaking changes
 
 - `api_version` key removed from `config/version.php`. Code reading `config('version.core.api_version')` will get `null`.
-- `request()` helper changed from a function-scoped `static` variable to `$GLOBALS['__velvet_request']`. Behavioral difference is minimal but may surface in testing or long-running processes.
+- `request()` helper changed from a function-scoped `static` variable to the service container. Behavioral difference is minimal but may surface in testing or long-running processes.
 
 ## 2.1.0
 
@@ -177,7 +177,7 @@ Config keys for module-scoped configuration now use a colon (`:`) as the namespa
 
 **Action required:**
 - Update all config calls: `config('velvetcms.editor.enabled')` → `config('velvetcms:editor.enabled')`.
-- The format is `namespace:file.key` — colon separates the module namespace from the file-level dotted path.
+- The format is `namespace:file.key` (colon separates the module namespace from the file-level dotted path).
 
 #### `BaseModule::mergeConfigFrom()` removed
 
@@ -259,7 +259,7 @@ Modules can opt out of route auto-loading via `module.json`:
 
 ## 2.0.0
 
-Version 2.0 marks the initial maturity milestone for VelvetCMS Core. Every subsystem — routing, DI, views, content, caching, scheduling, CLI, database, tenancy — is now considered stable. Starting with this release, Core follows **strict Semantic Versioning**.
+Version 2.0 marks the initial maturity milestone for VelvetCMS Core. Every subsystem (routing, DI, views, content, caching, scheduling, CLI, database, tenancy) is now considered stable. Starting with this release, Core follows **strict Semantic Versioning**.
 
 ### Breaking changes
 

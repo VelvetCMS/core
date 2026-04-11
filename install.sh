@@ -223,8 +223,8 @@ fi
 echo ""
 echo -e "${BOLD}Checking PHP extensions...${RESET}"
 
-REQUIRED_EXTS=(pdo pdo_sqlite mbstring json openssl tokenizer)
-OPTIONAL_EXTS=(pdo_mysql pdo_pgsql apcu redis)
+REQUIRED_EXTS=(pdo pdo_sqlite mbstring json openssl)
+OPTIONAL_EXTS=(curl pdo_mysql pdo_pgsql apcu redis)
 
 has_ext() { php -r "exit(extension_loaded('$1') ? 0 : 1);" 2>/dev/null; }
 
