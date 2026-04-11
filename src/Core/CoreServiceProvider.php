@@ -198,6 +198,27 @@ class CoreServiceProvider extends ServiceProvider
         $this->app->singleton('schedule', fn () => new \VelvetCMS\Scheduling\Schedule());
         $this->app->alias('schedule', \VelvetCMS\Scheduling\Schedule::class);
 
+        $this->app->singleton('queue', function () {
+            $driver = (string) $this->config('queue.driver', 'database');
+
+            $queueDriver = match ($driver) {
+                'sync' => new \VelvetCMS\Drivers\Queue\SyncQueueDriver(),
+                'database' => new \VelvetCMS\Drivers\Queue\DatabaseQueueDriver($this->app->get('db')),
+                default => throw new \RuntimeException("Unsupported queue driver: {$driver}"),
+            };
+
+            return new \VelvetCMS\Queue\QueueManager($queueDriver);
+        });
+        $this->app->alias('queue', \VelvetCMS\Queue\QueueManager::class);
+
+        $this->app->singleton('queue.worker', function () {
+            return new \VelvetCMS\Queue\Worker(
+                $this->app->get('queue'),
+                $this->app->get('events'),
+            );
+        });
+        $this->app->alias('queue.worker', \VelvetCMS\Queue\Worker::class);
+
         $this->app->singleton('storage', fn () => new \VelvetCMS\Services\StorageManager(
             (array) $this->config('filesystems', [])
         ));
@@ -215,6 +236,7 @@ class CoreServiceProvider extends ServiceProvider
 
         $this->app->events->listen('commands.registering', function ($registry) {
             $registry->register('schedule:run', \VelvetCMS\Commands\ScheduleRunCommand::class);
+            $registry->register('queue:work', \VelvetCMS\Commands\Queue\WorkCommand::class);
         });
     }
 
