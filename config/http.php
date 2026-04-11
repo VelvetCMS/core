@@ -14,6 +14,7 @@ return [
             'throttle' => \VelvetCMS\Http\Middleware\ThrottleRequests::class,
             'csrf' => \VelvetCMS\Http\Middleware\VerifyCsrfToken::class,
             'session' => \VelvetCMS\Http\Middleware\StartSessionMiddleware::class,
+            'cache' => \VelvetCMS\Http\Middleware\CacheResponse::class,
         ],
 
         /** Global middleware stack */
