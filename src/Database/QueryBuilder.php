@@ -15,8 +15,7 @@ class QueryBuilder
     private array $joins = [];
     private array $groupBy = [];
     private array $having = [];
-    private ?string $orderBy = null;
-    private string $orderDirection = 'ASC';
+    private array $orderByClauses = [];
     private ?int $limitValue = null;
     private ?int $offsetValue = null;
     private ?int $cacheTtl = null;
@@ -254,20 +253,19 @@ class QueryBuilder
     public function orderBy(string|RawExpression $column, string $direction = 'ASC'): self
     {
         if ($column instanceof RawExpression) {
-            $this->orderBy = $column->getValue();
+            $this->orderByClauses[] = ['raw' => $column->getValue(), 'direction' => ''];
             $this->bindings = array_merge($this->bindings, $column->getBindings());
         } else {
             $this->assertColumnReference($column);
-            $this->orderBy = $column;
+            $direction = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
+            $this->orderByClauses[] = ['column' => $column, 'direction' => $direction];
         }
-        $this->orderDirection = strtoupper($direction) === 'DESC' ? 'DESC' : 'ASC';
         return $this;
     }
 
     public function orderByRaw(string $expression, array $bindings = []): self
     {
-        $this->orderBy = $expression;
-        $this->orderDirection = '';
+        $this->orderByClauses[] = ['raw' => $expression, 'direction' => ''];
         $this->bindings = array_merge($this->bindings, $bindings);
         return $this;
     }
@@ -375,8 +373,7 @@ class QueryBuilder
 
         $countQuery = clone $this;
         $countQuery->selects = ['COUNT(*) as aggregate'];
-        $countQuery->orderBy = null;
-        $countQuery->orderDirection = 'ASC';
+        $countQuery->orderByClauses = [];
         $countQuery->limitValue = null;
         $countQuery->offsetValue = null;
 
@@ -588,10 +585,7 @@ class QueryBuilder
         $sql .= $this->buildWhere();
         $sql .= $this->buildGroupBy();
         $sql .= $this->buildHaving();
-
-        if ($this->orderBy) {
-            $sql .= " ORDER BY {$this->orderBy} {$this->orderDirection}";
-        }
+        $sql .= $this->buildOrderBy();
 
         if ($this->limitValue !== null) {
             $sql .= " LIMIT {$this->limitValue}";
@@ -685,6 +679,24 @@ class QueryBuilder
         }
 
         return $sql . implode('', $clauses);
+    }
+
+    private function buildOrderBy(): string
+    {
+        if (empty($this->orderByClauses)) {
+            return '';
+        }
+
+        $parts = [];
+        foreach ($this->orderByClauses as $clause) {
+            if (isset($clause['raw'])) {
+                $parts[] = $clause['raw'];
+            } else {
+                $parts[] = trim("{$clause['column']} {$clause['direction']}");
+            }
+        }
+
+        return ' ORDER BY ' . implode(', ', $parts);
     }
 
     private function buildWhere(): string
