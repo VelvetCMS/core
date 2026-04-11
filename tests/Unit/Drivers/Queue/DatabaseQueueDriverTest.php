@@ -8,8 +8,8 @@ use VelvetCMS\Contracts\ShouldBeUnique;
 use VelvetCMS\Database\Connection;
 use VelvetCMS\Drivers\Queue\DatabaseQueueDriver;
 use VelvetCMS\Queue\Job;
-use VelvetCMS\Tests\Support\TestCase;
 use VelvetCMS\Tests\Support\Concerns\CreatesTestDatabase;
+use VelvetCMS\Tests\Support\TestCase;
 
 final class DatabaseQueueDriverTest extends TestCase
 {
@@ -35,7 +35,7 @@ final class DatabaseQueueDriverTest extends TestCase
 
         $this->assertSame('1', $id);
 
-        $rows = $this->db->query("SELECT * FROM jobs WHERE id = ?", [(int) $id]);
+        $rows = $this->db->query('SELECT * FROM jobs WHERE id = ?', [(int) $id]);
         $this->assertCount(1, $rows);
         $this->assertSame('default', $rows[0]['queue']);
         $this->assertSame(0, (int) $rows[0]['attempts']);
@@ -46,7 +46,7 @@ final class DatabaseQueueDriverTest extends TestCase
         $job = new DbTestJob('test');
         $this->driver->push($job, 'emails', 60);
 
-        $rows = $this->db->query("SELECT * FROM jobs WHERE queue = ?", ['emails']);
+        $rows = $this->db->query('SELECT * FROM jobs WHERE queue = ?', ['emails']);
         $this->assertCount(1, $rows);
     }
 
@@ -60,7 +60,7 @@ final class DatabaseQueueDriverTest extends TestCase
 
         $this->assertSame($id1, $id2);
 
-        $count = $this->db->query("SELECT COUNT(*) as cnt FROM jobs");
+        $count = $this->db->query('SELECT COUNT(*) as cnt FROM jobs');
         $this->assertSame(1, (int) $count[0]['cnt']);
     }
 
@@ -93,7 +93,7 @@ final class DatabaseQueueDriverTest extends TestCase
         $this->assertSame('hello', $popped->message);
 
         // Should be reserved now
-        $rows = $this->db->query("SELECT reserved_at FROM jobs WHERE id = 1");
+        $rows = $this->db->query('SELECT reserved_at FROM jobs WHERE id = 1');
         $this->assertNotNull($rows[0]['reserved_at']);
     }
 
@@ -135,7 +135,7 @@ final class DatabaseQueueDriverTest extends TestCase
 
         $this->driver->complete($id);
 
-        $rows = $this->db->query("SELECT * FROM jobs WHERE id = ?", [(int) $id]);
+        $rows = $this->db->query('SELECT * FROM jobs WHERE id = ?', [(int) $id]);
         $this->assertCount(0, $rows);
     }
 
@@ -148,11 +148,11 @@ final class DatabaseQueueDriverTest extends TestCase
         $this->driver->fail($id, $exception);
 
         // Removed from jobs
-        $jobs = $this->db->query("SELECT * FROM jobs WHERE id = ?", [(int) $id]);
+        $jobs = $this->db->query('SELECT * FROM jobs WHERE id = ?', [(int) $id]);
         $this->assertCount(0, $jobs);
 
         // Added to failed_jobs
-        $failed = $this->db->query("SELECT * FROM failed_jobs");
+        $failed = $this->db->query('SELECT * FROM failed_jobs');
         $this->assertCount(1, $failed);
         $this->assertStringContainsString('Something broke', $failed[0]['exception']);
         $this->assertSame('default', $failed[0]['queue']);
@@ -162,7 +162,7 @@ final class DatabaseQueueDriverTest extends TestCase
     {
         $this->driver->fail('999', new \RuntimeException('test'));
 
-        $failed = $this->db->query("SELECT * FROM failed_jobs");
+        $failed = $this->db->query('SELECT * FROM failed_jobs');
         $this->assertCount(0, $failed);
     }
 
@@ -174,7 +174,7 @@ final class DatabaseQueueDriverTest extends TestCase
 
         $this->driver->release($popped->id, 0);
 
-        $rows = $this->db->query("SELECT reserved_at FROM jobs WHERE id = ?", [(int) $popped->id]);
+        $rows = $this->db->query('SELECT reserved_at FROM jobs WHERE id = ?', [(int) $popped->id]);
         $this->assertNull($rows[0]['reserved_at']);
 
         // Should be poppable again
@@ -225,7 +225,7 @@ final class DatabaseQueueDriverTest extends TestCase
         // Manually reserve the job with an old timestamp
         $oldTime = date('Y-m-d H:i:s', time() - 200);
         $this->db->statement(
-            "UPDATE jobs SET reserved_at = ?, attempts = 1 WHERE id = 1",
+            'UPDATE jobs SET reserved_at = ?, attempts = 1 WHERE id = 1',
             [$oldTime]
         );
 

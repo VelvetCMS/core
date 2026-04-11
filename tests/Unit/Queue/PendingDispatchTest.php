@@ -153,10 +153,25 @@ class RecordingQueueDriver implements \VelvetCMS\Contracts\QueueDriver
         return (string) $this->pushCount;
     }
 
-    public function pop(string $queue = 'default'): ?Job { return null; }
-    public function complete(string $jobId): void {}
-    public function fail(string $jobId, \Throwable $exception): void {}
-    public function release(string $jobId, int $delay = 0): void {}
-    public function size(?string $queue = null): int { return 0; }
-    public function clear(?string $queue = null): int { return 0; }
+    public function pop(string $queue = 'default'): ?Job
+    {
+        return null;
+    }
+    public function complete(string $jobId): void
+    {
+    }
+    public function fail(string $jobId, \Throwable $exception): void
+    {
+    }
+    public function release(string $jobId, int $delay = 0): void
+    {
+    }
+    public function size(?string $queue = null): int
+    {
+        return 0;
+    }
+    public function clear(?string $queue = null): int
+    {
+        return 0;
+    }
 }

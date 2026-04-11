@@ -50,7 +50,6 @@ abstract class Job
             if (in_array($name, $metaKeys, true)) {
                 continue;
             }
-            $property->setAccessible(true);
             $value = $property->getValue($this);
             if (is_scalar($value) || is_array($value) || is_null($value)) {
                 $data[$name] = $value;
@@ -101,7 +100,6 @@ abstract class Job
         foreach ($data as $name => $value) {
             if (property_exists($instance, $name)) {
                 $property = $reflection->getProperty($name);
-                $property->setAccessible(true);
                 $property->setValue($instance, $value);
             }
         }

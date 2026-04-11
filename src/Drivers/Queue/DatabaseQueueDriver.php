@@ -6,8 +6,8 @@ namespace VelvetCMS\Drivers\Queue;
 
 use VelvetCMS\Contracts\QueueDriver;
 use VelvetCMS\Contracts\ShouldBeUnique;
-use VelvetCMS\Queue\Job;
 use VelvetCMS\Database\Connection;
+use VelvetCMS\Queue\Job;
 
 class DatabaseQueueDriver implements QueueDriver
 {
