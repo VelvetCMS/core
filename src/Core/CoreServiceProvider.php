@@ -17,7 +17,7 @@ class CoreServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton('events', fn () => new EventDispatcher());
+        $this->app->singleton('events', fn () => $this->app->events);
         $this->app->alias('events', EventDispatcher::class);
 
         $this->app->singleton(ModuleArtifactPaths::class, fn () => new ModuleArtifactPaths($this->paths(), $this->tenancyState()));
