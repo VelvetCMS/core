@@ -200,14 +200,23 @@ if (!function_exists('db')) {
     }
 }
 
+if (!function_exists('queue')) {
+    function queue(): \VelvetCMS\Queue\QueueManager
+    {
+        return app('queue');
+    }
+}
+
 if (!function_exists('request')) {
     function request(): \VelvetCMS\Http\Request
     {
-        if (!isset($GLOBALS['__velvet_request']) || !$GLOBALS['__velvet_request'] instanceof \VelvetCMS\Http\Request) {
-            $GLOBALS['__velvet_request'] = \VelvetCMS\Http\Request::capture();
+        $app = \VelvetCMS\Core\Application::getInstance();
+
+        if (!$app->has('request')) {
+            $app->instance('request', \VelvetCMS\Http\Request::capture());
         }
 
-        return $GLOBALS['__velvet_request'];
+        return $app->get('request');
     }
 }
 
@@ -360,7 +369,7 @@ if (!function_exists('csrf_field')) {
 if (!function_exists('method_field')) {
     function method_field(string $method): string
     {
-        return '<input type="hidden" name="_method" value="' . strtoupper($method) . '">';
+        return '<input type="hidden" name="_method" value="' . e(strtoupper($method)) . '">';
     }
 }
 

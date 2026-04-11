@@ -135,7 +135,6 @@ abstract class TestCase extends BaseTestCase
 
         Application::clearInstance();
 
-        unset($GLOBALS['__velvet_request']);
         $_SESSION = [];
     }
 

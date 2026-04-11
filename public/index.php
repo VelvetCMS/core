@@ -11,6 +11,7 @@ use VelvetCMS\Http\Request;
 $request = Request::capture();
 
 $app = require __DIR__ . '/../bootstrap/app.php';
+$app->instance('request', $request);
 $app->make(\VelvetCMS\Core\Tenancy\TenancyManager::class)->bootstrapFromRequest($request);
 $app->boot();
 
